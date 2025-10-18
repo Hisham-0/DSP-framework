@@ -59,9 +59,9 @@ def SinCosSignalSamplesAreEqual(user_choice, file_name, indices, samples):
 
 def SubSignalSamplesAreEqual(userFirstSignal, userSecondSignal, Your_indices, Your_samples):
     if userFirstSignal == 'Signal1.txt' and userSecondSignal == 'Signal2.txt':
-        file_name = r"C:\Users\human\Desktop\third year\DSP\DSP-framework\Signals\session2\output_Math_operation_Files\signal1-signal2.txt"  # write here path of signal1-signal2
+        file_name = r"C:\Users\human\Desktop\third year\DSP\DSP-framework\Signals\task2\output_Math_operation_Files\signal1-signal2.txt"  # write here path of signal1-signal2
     elif userFirstSignal == 'Signal1.txt' and userSecondSignal == 'Signal3.txt':
-        file_name = r"C:\Users\human\Desktop\third year\DSP\DSP-framework\Signals\session2\output_Math_operation_Files\signal1-signal3.txt"  # write here path of signal1-signal3
+        file_name = r"C:\Users\human\Desktop\third year\DSP\DSP-framework\Signals\task2\output_Math_operation_Files\signal1-signal3.txt"  # write here path of signal1-signal3
 
     expected_indices, expected_samples = ReadSignalFile(file_name)
 
@@ -83,9 +83,9 @@ def SubSignalSamplesAreEqual(userFirstSignal, userSecondSignal, Your_indices, Yo
 
 def NormalizeSignal(MinRange, MaxRange, Your_indices, Your_samples):
     if MinRange == -1 and MaxRange == 1:
-        file_name =  r"C:\Users\human\Desktop\third year\DSP\DSP-framework\Signals\session2\output_Math_operation_Files\normalize of signal 1 (from -1 to 1)-- output.txt"  # "TestCases/Task2/Output/NorOutput1.txt"  # write here path of normalize signal 1 output.txt
+        file_name =  r"C:\Users\human\Desktop\third year\DSP\DSP-framework\Signals\task2\output_Math_operation_Files\normalize of signal 1 (from -1 to 1)-- output.txt"  # "TestCases/Task2/Output/NorOutput1.txt"  # write here path of normalize signal 1 output.txt
     elif MinRange == 0 and MaxRange == 1:
-        file_name =  r"C:\Users\human\Desktop\third year\DSP\DSP-framework\Signals\session2\output_Math_operation_Files\normlize signal 2 (from 0 to 1 )-- output.txt" #"TestCases/Task2/Output/NorOutput2.txt"  # write here path of normalize signal 2 output.txt
+        file_name =  r"C:\Users\human\Desktop\third year\DSP\DSP-framework\Signals\task2\output_Math_operation_Files\normlize signal 2 (from 0 to 1 )-- output.txt" #"TestCases/Task2/Output/NorOutput2.txt"  # write here path of normalize signal 2 output.txt
 
     expected_indices, expected_samples = ReadSignalFile(file_name)
 
