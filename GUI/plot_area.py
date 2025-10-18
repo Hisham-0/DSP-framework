@@ -223,10 +223,6 @@ class PlotArea:
         self.ax.set_ylabel("Amplitude")
         self.ax.grid(True, linestyle=':', alpha=0.6)
         self.ax.axhline(y=0, color='k', linewidth=0.8, alpha=0.7)
-
-        if signals_data:
-            self.ax.legend(loc='best', fontsize=8)
-
         self.fig.tight_layout()
         self.canvas.draw()
 

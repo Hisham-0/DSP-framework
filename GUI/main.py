@@ -286,6 +286,38 @@ class OperationDialog:
         elif self.operation_type in ["squaring", "normalization", "accumulation"]:
             self._create_single_signal_content()
 
+    def _create_quantization_content(self):
+        tk.Label(self.dialog, text="Select signal:").pack(pady=5)
+        self.signal_list = tk.Listbox(self.dialog, height=4, exportselection=False)
+        self.signal_list.pack(padx=10, pady=2, fill=tk.X)
+        self._populate_signal_list([self.signal_list])
+
+        # Quantization parameters
+        param_frame = tk.Frame(self.dialog)
+        param_frame.pack(fill=tk.X, padx=10, pady=10)
+
+        self.quant_method = tk.StringVar(value="levels")
+
+        tk.Radiobutton(
+            param_frame,
+            text="Levels:",
+            variable=self.quant_method,
+            value="levels"
+        ).grid(row=0, column=0, sticky='w')
+
+        self.levels_var = tk.StringVar(value="8")
+        tk.Entry(param_frame, textvariable=self.levels_var, width=8).grid(row=0, column=1, padx=5)
+
+        tk.Radiobutton(
+            param_frame,
+            text="Bits:",
+            variable=self.quant_method,
+            value="bits"
+        ).grid(row=1, column=0, sticky='w', pady=5)
+
+        self.bits_var = tk.StringVar(value="3")
+        tk.Entry(param_frame, textvariable=self.bits_var, width=8).grid(row=1, column=1, padx=5)
+
     def _create_addition_content(self):
         tk.Label(self.dialog, text="Select signals to add:").pack(pady=5)
 
@@ -456,6 +488,129 @@ class OperationDialog:
             messagebox.showerror("Error", f"Operation failed:\n{str(e)}")
 
 
+class QuantizationDialog:
+    """Quantization Operation Dialog"""
+
+    def __init__(self, parent, gui):
+        self.parent = parent
+        self.gui = gui
+        self.dialog = None
+
+    def show(self):
+        self.dialog = tk.Toplevel(self.parent)
+        self.dialog.title("Quantize Signal")
+        self.dialog.geometry("300x300")
+        self.dialog.transient(self.parent)
+        self.dialog.grab_set()
+
+        tk.Label(
+            self.dialog,
+            text="Signal Quantization",
+            font=("Arial", 9, "bold")
+        ).pack(pady=10)
+
+        # Signal selection
+        tk.Label(self.dialog, text="Select signal:").pack(pady=5)
+        self.signal_list = tk.Listbox(self.dialog, height=4, exportselection=False)
+        self.signal_list.pack(padx=10, pady=2, fill=tk.X)
+        self._populate_signal_list()
+
+        # Quantization method selection
+        method_frame = tk.Frame(self.dialog)
+        method_frame.pack(fill=tk.X, padx=10, pady=10)
+
+        self.method_var = tk.StringVar(value="levels")
+
+        tk.Radiobutton(
+            method_frame,
+            text="Number of Levels:",
+            variable=self.method_var,
+            value="levels",
+            command=self._toggle_method
+        ).pack(anchor='w')
+
+        self.levels_frame = tk.Frame(method_frame)
+        self.levels_frame.pack(fill=tk.X, padx=20)
+        self.levels_var = tk.StringVar(value="8")
+        tk.Entry(self.levels_frame, textvariable=self.levels_var, width=10).pack(side=tk.LEFT)
+
+        tk.Radiobutton(
+            method_frame,
+            text="Number of Bits:",
+            variable=self.method_var,
+            value="bits",
+            command=self._toggle_method
+        ).pack(anchor='w', pady=(5, 0))
+
+        self.bits_frame = tk.Frame(method_frame)
+        self.bits_frame.pack(fill=tk.X, padx=20)
+        self.bits_var = tk.StringVar(value="3")
+        tk.Entry(self.bits_frame, textvariable=self.bits_var, width=10).pack(side=tk.LEFT)
+
+        # Buttons
+        button_frame = tk.Frame(self.dialog)
+        button_frame.pack(pady=10)
+
+        tk.Button(
+            button_frame,
+            text="Quantize",
+            command=self._quantize,
+            width=10
+        ).pack(side=tk.LEFT, padx=5)
+
+        tk.Button(
+            button_frame,
+            text="Cancel",
+            command=self.dialog.destroy,
+            width=10
+        ).pack(side=tk.LEFT, padx=5)
+
+        self._toggle_method()
+
+    def _populate_signal_list(self):
+        self.signal_list.delete(0, tk.END)
+        for i, signal in enumerate(self.gui.data_manager.get_all_signals()):
+            self.signal_list.insert(tk.END, f"{i + 1}. {signal['name']}")
+
+    def _toggle_method(self):
+        if self.method_var.get() == "levels":
+            self.levels_var.set("8")
+        else:
+            self.bits_var.set("3")
+
+    def _quantize(self):
+        try:
+            selected = self.signal_list.curselection()
+            if not selected:
+                messagebox.showwarning("Warning", "Select a signal")
+                return
+
+            method = self.method_var.get()
+            if method == "levels":
+                levels = int(self.levels_var.get())
+                bits = None
+                if levels < 2:
+                    raise ValueError("Number of levels must be at least 2")
+            else:
+                bits = int(self.bits_var.get())
+                levels = None
+                if bits < 1:
+                    raise ValueError("Number of bits must be at least 1")
+
+            self.gui.execute_operation(
+                "quantization",
+                signal_index=selected[0],
+                levels=levels,
+                bits=bits
+            )
+            self.dialog.destroy()
+
+        except ValueError as e:
+            messagebox.showerror("Error", f"Input error:\n{str(e)}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Quantization failed:\n{str(e)}")
+
+
 class SignalProcessingGUI:
     """Main GUI Controller Class"""
 
@@ -523,6 +678,32 @@ class SignalProcessingGUI:
         except Exception as e:
             print(f"Error saving signal: {e}")
             messagebox.showerror("Save Error", f"Failed to save signal:\n{str(e)}")
+            return False
+
+    def save_quantization_test_file(self, quantization_result, filename):
+        """Save quantization results in the format expected by test cases"""
+        try:
+            file_path = os.path.join(self.output_folder, filename)
+            with open(file_path, 'w') as f:
+                # Write header matching test case format
+                f.write("0\n")  # signal_type
+                f.write("0\n")  # is_periodic
+                f.write(f"{quantization_result['quantized_signal']['num_samples']}\n")  # num_samples
+
+                # Write data in format: [interval_index] [binary_code] [quantized_value] [error]
+                indices = quantization_result['quantized_signal']['indices']
+                samples = quantization_result['quantized_signal']['samples']
+                binary_codes = quantization_result['binary_codes']
+                error_samples = quantization_result['error_signal']['samples']
+                interval_indices = quantization_result['interval_indices']
+
+                for i in range(len(indices)):
+                    f.write(f"{binary_codes[i]} {samples[i]:.6f}\n") #{interval_indices[i]}  {error_samples[i]:.6f}
+
+            print(f"Quantization test file saved to: {file_path}")
+            return file_path
+        except Exception as e:
+            print(f"Error saving quantization test file: {e}")
             return False
 
     def delete_signal(self):
@@ -607,8 +788,6 @@ class SignalProcessingGUI:
                 result = SignalProcessor.subtract_signals(sig1, sig2)
                 name = "Subtraction_Result"
 
-
-
             elif operation_type == "multiplication":
                 signal = self.data_manager.get_signal(kwargs['signal_index'])
                 constant = kwargs['constant']
@@ -631,6 +810,74 @@ class SignalProcessingGUI:
                 result = SignalProcessor.accumulate_signal(signal)
                 name = f"Accumulated_{signal['name']}"
 
+            # In the quantization section of execute_operation method:
+            elif operation_type == "quantization":
+                try:
+                    signal_index = kwargs['signal_index']
+                    signal = self.data_manager.get_signal(signal_index)
+
+                    if signal is None:
+                        messagebox.showerror("Error", "Selected signal not found")
+                        return False
+
+                    levels = kwargs.get('levels')
+                    bits = kwargs.get('bits')
+
+                    print(f"Quantizing signal {signal_index} with bits={bits}, levels={levels}")
+
+                    # Perform quantization
+                    quantization_result = SignalProcessor.quantize_signal(
+                        signal, levels=levels, bits=bits
+                    )
+
+                    # Add ONLY the quantized signal to manager for display
+                    quantized_signal = quantization_result["quantized_signal"]
+
+                    test_filename = f"quantization_test_output.txt"
+
+                    # Save in test case format
+                    file_path = self.save_quantization_test_file(quantization_result, test_filename)
+
+                    self.data_manager.add_signal(SignalProcessor.parse_signal_file(file_path),
+                                                 os.path.basename(file_path))
+
+
+
+                    # Calculate and show metrics
+                    metrics = SignalProcessor.calculate_quantization_metrics(
+                        signal, quantized_signal
+                    )
+
+                    quant_info = quantization_result["quantization_info"]
+                    metrics_text = (
+                        f"Quantization Complete!\n\n"
+                        f"Parameters:\n"
+                        f"• Levels: {quant_info['levels']}\n"
+                        f"• Bits: {quant_info['bits']}\n"
+                        f"• Range: [{quant_info['min_val']:.3f}, {quant_info['max_val']:.3f}]\n"
+                        f"• Step Size: {quant_info['step_size']:.3f}\n\n"
+                        f"Performance:\n"
+                        f"• MSE: {metrics['mse']:.6f}\n"
+                        f"• RMSE: {metrics['rmse']:.6f}\n"
+                        f"• SNR: {metrics['snr_db']:.2f} dB\n"
+                        f"• Max Error: {metrics['max_error']:.6f}\n\n"
+                        f"Quantized signal saved as: {test_filename}"
+                    )
+
+                    messagebox.showinfo("Quantization Complete", metrics_text)
+
+                    # Update display
+                    self.left_panel.update_signal_list()
+                    self.update_plot_display()
+
+                    return True
+
+                except Exception as e:
+                    messagebox.showerror("Error", f"Quantization failed:\n{str(e)}")
+                    import traceback
+                    traceback.print_exc()
+                    return False
+
             if result and name:
                 self.data_manager.add_signal(result, name)
                 filename = f"{name}.txt"
@@ -650,6 +897,8 @@ class SignalProcessingGUI:
                         "(Note: File save failed)"
                     )
                 return True
+
+
             else:
                 messagebox.showerror("Error", "Operation produced no result")
                 return False
@@ -665,6 +914,10 @@ class SignalProcessingGUI:
             import traceback
             traceback.print_exc()
             return False
+
+    # ----------------------------------------
+    # ----------------------------------------
+    # ----------------------------------------
 
     # Dialog methods for left panel
     def show_addition_dialog(self):
@@ -685,6 +938,10 @@ class SignalProcessingGUI:
     def show_accumulation_dialog(self):
         OperationDialog(self.root, "Accumulate Signal", self, "accumulation").show()
 
+    def show_quantization_dialog(self):
+        """Show quantization dialog"""
+        QuantizationDialog(self.root, self).show()
+
 
 class TestDialog:
     """Dialog for running signal processing tests"""
@@ -698,7 +955,7 @@ class TestDialog:
         """Display the test dialog"""
         self.dialog = tk.Toplevel(self.parent)
         self.dialog.title("Signal Processing Tests")
-        self.dialog.geometry("500x500")
+        self.dialog.geometry("500x700")
         self.dialog.transient(self.parent)
         self.dialog.grab_set()
 
@@ -719,15 +976,17 @@ class TestDialog:
 
         self.test_var = tk.StringVar(value="squaring")
 
+        # Define tests
         tests = [
             ("Squaring Test", "squaring"),
             ("Accumulation Test", "accumulation"),
             ("Normalization Test", "normalization"),
             ("Subtraction Test", "subtraction"),
             ("Sinusoidal Test", "sinusoidal"),
-            ("Addition Test", "addition")
+            ("Addition Test", "addition"),
+            ("Quantization Test 1", "quantization1"),
+            ("Quantization Test 2", "quantization2"),
         ]
-
         for text, value in tests:
             tk.Radiobutton(
                 test_frame,
@@ -794,19 +1053,39 @@ class TestDialog:
             value="Cosine"
         ).pack(anchor='w', padx=5, pady=2)
 
-        # Expected output file selection (for all tests)
+        # Quantization parameters frame
+        self.quant_frame = tk.LabelFrame(main_frame, text="Quantization Parameters", font=("Arial", 9, "bold"))
+
+        # Method selection
+        method_frame = tk.Frame(self.quant_frame)
+        method_frame.pack(fill=tk.X, padx=5, pady=2)
+        tk.Label(method_frame, text="Method:").pack(side=tk.LEFT)
+        self.quant_method_var = tk.StringVar(value="bits")
+        tk.Radiobutton(method_frame, text="Bits", variable=self.quant_method_var, value="bits").pack(side=tk.LEFT,
+                                                                                                     padx=5)
+        tk.Radiobutton(method_frame, text="Levels", variable=self.quant_method_var, value="levels").pack(side=tk.LEFT,
+                                                                                                         padx=5)
+
+        # Value input
+        value_frame = tk.Frame(self.quant_frame)
+        value_frame.pack(fill=tk.X, padx=5, pady=2)
+        tk.Label(value_frame, text="Value:").pack(side=tk.LEFT)
+        self.quant_value_var = tk.StringVar(value="3")
+        tk.Entry(value_frame, textvariable=self.quant_value_var, width=10).pack(side=tk.LEFT, padx=5)
+
+        # Expected output file selection
         self.file_frame = tk.LabelFrame(main_frame, text="Expected Output File", font=("Arial", 9, "bold"))
         file_select_frame = tk.Frame(self.file_frame)
         file_select_frame.pack(fill=tk.X, padx=5, pady=5)
         self.file_path_var = tk.StringVar()
-        self.file_entry = tk.Entry(  # Store as instance variable
+        self.file_entry = tk.Entry(
             file_select_frame,
             textvariable=self.file_path_var,
             state='readonly',
             width=40
         )
         self.file_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        self.browse_button = tk.Button(  # Store as instance variable
+        self.browse_button = tk.Button(
             file_select_frame,
             text="Browse",
             command=self._browse_file,
@@ -872,35 +1151,42 @@ class TestDialog:
         self.multi_signal_frame.pack_forget()
         self.range_frame.pack_forget()
         self.sinusoidal_frame.pack_forget()
+        self.quant_frame.pack_forget()
+        self.file_frame.pack_forget()
 
         # Show relevant frames
         if test_type == "subtraction":
             self.multi_signal_frame.pack(fill=tk.X, pady=5)
             self.subtraction_frame.pack(fill=tk.X, padx=5, pady=5)
             self.addition_frame.pack_forget()
+            self.browse_button.config(state='disabled')
+            self.file_entry.config(state='disabled')
         elif test_type == "addition":
             self.multi_signal_frame.pack(fill=tk.X, pady=5)
             self.addition_frame.pack(fill=tk.X, padx=5, pady=5)
             self.subtraction_frame.pack_forget()
-        elif test_type == "normalization":
-            self.range_frame.pack(fill=tk.X, pady=5)
-        elif test_type == "sinusoidal":
-            self.sinusoidal_frame.pack(fill=tk.X, pady=5)
-
-        # Enable/disable file browser based on test type
-        if test_type in ["subtraction", "normalization"]:
-            # Disable browse button for tests that use hardcoded file paths
-            self.browse_button.config(state='disabled')
-            self.file_entry.config(state='disabled')  # Also disable the entry field
-            self.file_path_var.set("")  # Clear any previous file path
-        else:
-            # Enable browse button for tests that need file selection
             self.browse_button.config(state='normal')
             self.file_entry.config(state='readonly')
-
-        # Always show file frame for all tests (but it may be disabled)
-        self.file_frame.pack(fill=tk.X, pady=5)
-
+            self.file_frame.pack(fill=tk.X, pady=5)
+        elif test_type == "normalization":
+            self.range_frame.pack(fill=tk.X, pady=5)
+            self.browse_button.config(state='disabled')
+            self.file_entry.config(state='disabled')
+        elif test_type == "sinusoidal":
+            self.sinusoidal_frame.pack(fill=tk.X, pady=5)
+            self.browse_button.config(state='normal')
+            self.file_entry.config(state='readonly')
+            self.file_frame.pack(fill=tk.X, pady=5)
+        elif test_type in ["quantization1", "quantization2"]:
+            self.quant_frame.pack(fill=tk.X, pady=5)
+            self.browse_button.config(state='normal')
+            self.file_entry.config(state='readonly')
+            self.file_frame.pack(fill=tk.X, pady=5)
+        else:
+            # For other tests (squaring, accumulation, etc.)
+            self.browse_button.config(state='normal')
+            self.file_entry.config(state='readonly')
+            self.file_frame.pack(fill=tk.X, pady=5)
 
     def _get_signal_file_name(self, signal_idx):
         """Get the original file name of a signal or create a proper mapping"""
@@ -941,14 +1227,16 @@ class TestDialog:
                 messagebox.showwarning("Warning", "Please select a signal")
                 return
 
-            signal2_idx = selected_signals[0]
-            signal = self.gui.data_manager.get_signal(signal2_idx)
+            signal_idx = selected_signals[0]
+            signal = self.gui.data_manager.get_signal(signal_idx)
 
             # Get expected file path
             expected_file = self.file_path_var.get()
 
             # Import test functions
             try:
+                from Data.QuanTest1 import QuantizationTest1
+                from Data.QuanTest2 import QuantizationTest2
                 from Data.Task2Test import (
                     SignalSamplesAreEqual,
                     NormalizeSignal,
@@ -961,7 +1249,7 @@ class TestDialog:
 
             # Run appropriate test - results will print to terminal
             if test_type == "squaring":
-                result = self.gui.execute_operation("squaring", signal_index=signal2_idx)
+                result = self.gui.execute_operation("squaring", signal_index=signal_idx)
                 if result:
                     result_signal = self.gui.data_manager.get_all_signals()[-1]
                     print(f"Running Squaring Test on signal: {signal['name']}")
@@ -973,7 +1261,7 @@ class TestDialog:
                     )
 
             elif test_type == "accumulation":
-                result = self.gui.execute_operation("accumulation", signal_index=signal2_idx)
+                result = self.gui.execute_operation("accumulation", signal_index=signal_idx)
                 if result:
                     result_signal = self.gui.data_manager.get_all_signals()[-1]
                     print(f"Running Accumulation Test on signal: {signal['name']}")
@@ -986,7 +1274,7 @@ class TestDialog:
 
             elif test_type == "normalization":
                 result = self.gui.execute_operation("normalization",
-                                                    signal_index=signal2_idx,
+                                                    signal_index=signal_idx,
                                                     target_range=self.range_var.get())
                 if result:
                     result_signal = self.gui.data_manager.get_all_signals()[-1]
@@ -1014,7 +1302,7 @@ class TestDialog:
                 print(f"Signal 1: {signal['name']}")
                 print(f"Signal 2: {signal2['name']}")
 
-                signal1_file = self._get_signal_file_name(signal2_idx)
+                signal1_file = self._get_signal_file_name(signal_idx)
                 signal2_file = self._get_signal_file_name(signal1_idx)
 
                 print(f"Signal 1 file name for test: {signal1_file}")
@@ -1022,21 +1310,17 @@ class TestDialog:
 
                 result = self.gui.execute_operation("subtraction",
                                                     signal1_index=signal1_idx,
-                                                    signal2_index=signal2_idx)
+                                                    signal2_index=signal_idx)
                 if result:
                     result_signal = self.gui.data_manager.get_all_signals()[-1]
 
                     print(f"Running Subtraction Test on signals: {signal['name']} - {signal2['name']}")
 
                     # FIX: Pass the actual file names that the test function expects
-
-                    # You need to get the original file names, not the display names
-
-                    signal1_file = self._get_signal_file_name(signal2_idx)
-
+                    signal1_file = self._get_signal_file_name(signal_idx)
                     signal2_file = self._get_signal_file_name(signal1_idx)
 
-                    print (f'running  {signal1_file} - {signal2_file}')
+                    print(f'running  {signal1_file} - {signal2_file}')
                     SubSignalSamplesAreEqual(
                         signal1_file,
                         signal2_file,
@@ -1051,7 +1335,7 @@ class TestDialog:
                     return
 
                 # Combine main signal with additional signals
-                all_indices = [signal2_idx] + list(selected_signals_add)
+                all_indices = [signal_idx] + list(selected_signals_add)
                 result = self.gui.execute_operation("addition", signal_indices=all_indices)
                 if result:
                     result_signal = self.gui.data_manager.get_all_signals()[-1]
@@ -1073,12 +1357,66 @@ class TestDialog:
                     signal["samples"]
                 )
 
+            elif test_type in ["quantization1", "quantization2"]:
+
+                method = self.quant_method_var.get()
+                try:
+                    value = int(self.quant_value_var.get())
+                    if value <= 0:
+                        raise ValueError("Value must be positive")
+                except ValueError:
+                    messagebox.showerror("Error", "Please enter a positive integer for quantization value")
+                    return
+
+                from Data.signal_processor import SignalProcessor
+
+                # Set parameters based on method
+                if method == 'bits':
+                    quantization_result = SignalProcessor.quantize_signal(signal, bits=value)
+                else:
+                    quantization_result = SignalProcessor.quantize_signal(signal, levels=value)
+
+                # Extract the required data for tests
+                binary_encoded = quantization_result.get('binary_codes', [])
+                quantized_samples = quantization_result['quantized_signal']['samples']
+                error_samples = quantization_result['error_signal']['samples']
+                interval_indices = quantization_result.get('interval_indices', [])
+
+                # If interval_indices is not available, create 1-based indices
+                if interval_indices is None or len(interval_indices) == 0:
+                    interval_indices = [i + 1 for i in range(len(quantized_samples))]
+
+                # Run the appropriate quantization test
+                if not expected_file:
+                    messagebox.showwarning("Warning", "Please select expected output file")
+                    return
+
+                if test_type == "quantization1":
+                    QuantizationTest1(
+                        expected_file,
+                        binary_encoded,  # Your_EncodedValues
+                        quantized_samples  # Your_QuantizedValues
+                    )
+                elif test_type == "quantization2":
+                    QuantizationTest2(
+                        expected_file,
+                        interval_indices,  # Your_IntervalIndices (1-based)
+                        binary_encoded,  # Your_EncodedValues
+                        quantized_samples,  # Your_QuantizedValues
+                        error_samples  # Your_SampledError
+                    )
+
             # Close dialog after test
             self.dialog.destroy()
             messagebox.showinfo("Test Complete", "Test completed. Check terminal for results.")
 
         except Exception as e:
             messagebox.showerror("Error", f"Test failed:\n{str(e)}")
+            import traceback
+            traceback.print_exc()
+
+
+
 
 def main():
     root = tk.Tk()

@@ -2,6 +2,7 @@
 Signal Processing Framework - Logic Layer
 Enhanced with additional operations
 """
+import math
 
 import numpy as np
 
@@ -57,20 +58,6 @@ class SignalProcessor:
         except Exception as e:
             raise ValueError(f"Error parsing file: {str(e)}")
 
-    @staticmethod
-    def calculate_statistics(samples):
-        """Calculate basic statistics"""
-
-        if not samples.any():
-            return {"min": 0, "max": 0, "mean": 0}
-
-        return {
-            "min": min(samples),
-            "max": max(samples),
-            "mean": sum(samples) / len(samples)
-        }
-
-    # Arithmetic Operations
     @staticmethod
     def add_signals(signals):
         """Add multiple signals (handles unequal lengths by zero-padding)"""
@@ -253,6 +240,113 @@ class SignalProcessor:
             "num_samples": num_samples,
             "x_label": "Sample Index (n)"
         }
+
+    @staticmethod
+    def quantize_signal(signal, levels=None, bits=None):
+        """Quantize signal with given levels or bits - FIXED FOR TEST CASES"""
+        samples = signal["samples"]
+        indices = signal["indices"]
+
+        # Calculate levels from bits if bits provided
+        if bits is not None:
+            levels = 2 ** bits
+        elif levels is not None:
+            bits = math.ceil(math.log2(levels))
+        else:
+            raise ValueError("Either levels or bits must be provided")
+
+        if levels <= 1:
+            raise ValueError("Number of levels must be greater than 1")
+
+        # Find min and max of signal
+        min_val = np.min(samples)
+        max_val = np.max(samples)
+
+        # Calculate step size
+        if max_val == min_val:
+            step = 0
+        else:
+            step = (max_val - min_val) / levels
+
+        quantized_samples = []
+        binary_codes = []
+        interval_indices = []
+        error_samples = []
+
+        for sample in samples:
+            if max_val == min_val:
+                # All samples are the same
+                level = 0
+                quantized_value = min_val
+            else:
+                # Find which interval the sample falls into
+                level = int((sample - min_val) / step)
+
+                # Handle edge case where sample equals max_val
+                if level >= levels:
+                    level = levels - 1
+
+                # Ensure level is within valid range
+                level = max(0, min(levels - 1, level))
+
+                # Quantized value at the midpoint of the interval
+                quantized_value = min_val + (level + 0.5) * step
+
+            # Generate binary code with exactly 'bits' bits
+            binary_code = format(level, f'0{bits}b')
+
+            quantized_samples.append(quantized_value)
+            binary_codes.append(binary_code)
+            interval_indices.append(level + 1)  # 1-based for display
+            error_samples.append(quantized_value - sample)  # Calculate error
+
+        return {
+            "original_signal": signal,
+            "quantized_signal": {
+                "indices": indices,
+                "samples": np.array(quantized_samples),
+                "signal_type": signal["signal_type"],
+                "is_periodic": signal["is_periodic"],
+                "num_samples": signal["num_samples"]
+            },
+            "error_signal": {
+                "indices": indices,
+                "samples": np.array(error_samples),  # Use calculated error samples
+                "signal_type": signal["signal_type"],
+                "is_periodic": signal["is_periodic"],
+                "num_samples": signal["num_samples"]
+            },
+            "binary_codes": binary_codes,
+            "interval_indices": np.array(interval_indices),
+            "quantization_info": {
+                "levels": levels,
+                "bits": bits,
+                "min_val": min_val,
+                "max_val": max_val,
+                "step_size": step
+            }
+        }
+
+    @staticmethod
+    def calculate_quantization_metrics(original_signal, quantized_signal):
+        """Calculate quantization performance metrics"""
+        original = original_signal["samples"]
+        quantized = quantized_signal["samples"]
+        error = original - quantized
+
+        mse = np.mean(error ** 2)
+        rmse = np.sqrt(mse)
+        signal_power = np.mean(original ** 2)
+        snr = 10 * np.log10(signal_power / mse) if mse > 0 else float('inf')
+
+        return {
+            "mse": mse,
+            "rmse": rmse,
+            "snr_db": snr,
+            "max_error": np.max(np.abs(error)),
+            "mean_error": np.mean(error)
+        }
+
 
 
 class SignalDataManager:

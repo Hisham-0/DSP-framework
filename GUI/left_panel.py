@@ -11,7 +11,6 @@ class LeftPanel:
         self.parent = parent
         self.gui = gui
         self.signal_vars = {}  # Store checkbutton variables for each signal
-
         self.create_panel()
 
     def create_panel(self):
@@ -125,6 +124,7 @@ class LeftPanel:
             ("Square", self.gui.show_squaring_dialog),
             ("Normalize", self.gui.show_normalization_dialog),
             ("Accumulate", self.gui.show_accumulation_dialog),
+            ("Quantize", self.gui.show_quantization_dialog),
         ]
 
         for i, (text, command) in enumerate(operations):
