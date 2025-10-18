@@ -51,6 +51,9 @@ class MenuBar:
         # Display Menu
         self._create_display_menu(menubar)
 
+        # Test menu
+        self._create_test_menu(menubar)
+
     def _create_file_menu(self, menubar):
         file_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="File", menu=file_menu)
@@ -118,6 +121,16 @@ class MenuBar:
         display_menu.add_command(
             label="Reset View",
             command=self.gui.reset_plot_view
+        )
+
+    def _create_test_menu(self, menubar):
+        """Create the Test menu"""
+        test_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Test", menu=test_menu)
+
+        test_menu.add_command(
+            label="Run Tests",
+            command=lambda: TestDialog(self.root, self.gui).show()
         )
 
     def _show_operation_dialog(self, title, operation_type):
@@ -294,11 +307,11 @@ class OperationDialog:
         self._populate_signal_list()
 
     def _create_subtraction_content(self):
-        tk.Label(self.dialog, text="Signal 1 (Minuend):").pack(pady=5)
+        tk.Label(self.dialog, text="Signal 1 (Subtrahend):").pack(pady=5)
         self.signal1_list = tk.Listbox(self.dialog, height=4, exportselection=False)
         self.signal1_list.pack(padx=10, pady=2, fill=tk.X)
 
-        tk.Label(self.dialog, text="Signal 2 (Subtrahend):").pack(pady=5)
+        tk.Label(self.dialog, text="Signal 2 (Minuend):").pack(pady=5)
         self.signal2_list = tk.Listbox(self.dialog, height=4, exportselection=False)
         self.signal2_list.pack(padx=10, pady=2, fill=tk.X)
 
@@ -394,8 +407,8 @@ class OperationDialog:
                     return
                 self.gui.execute_operation(
                     "subtraction",
-                    signal1_index=sel1[0],
-                    signal2_index=sel2[0]
+                    signal1_index=sel2[0],
+                    signal2_index=sel1[0]
                 )
 
             elif self.operation_type == "multiplication":
@@ -483,6 +496,7 @@ class SignalProcessingGUI:
                 signal_data = SignalProcessor.parse_signal_file(file_path)
                 signal_name = os.path.basename(file_path)
                 signal_data["generated"] = False
+                signal_data["file_path"] = file_path
                 self.data_manager.add_signal(signal_data, signal_name)
                 self.left_panel.update_signal_list()
                 messagebox.showinfo(
@@ -551,9 +565,9 @@ class SignalProcessingGUI:
     def reset_plot_view(self):
         self.plot_area.reset_plot_view()
 
-#-----------------------------------------------------------
-# Operations call from the logic layer
-#-----------------------------------------------------------
+    # -----------------------------------------------------------
+    # Operations call from the logic layer
+    # -----------------------------------------------------------
 
     def execute_operation(self, operation_type, **kwargs):
         try:
@@ -592,6 +606,8 @@ class SignalProcessingGUI:
                 sig2 = self.data_manager.get_signal(kwargs['signal2_index'])
                 result = SignalProcessor.subtract_signals(sig1, sig2)
                 name = "Subtraction_Result"
+
+
 
             elif operation_type == "multiplication":
                 signal = self.data_manager.get_signal(kwargs['signal_index'])
@@ -669,6 +685,400 @@ class SignalProcessingGUI:
     def show_accumulation_dialog(self):
         OperationDialog(self.root, "Accumulate Signal", self, "accumulation").show()
 
+
+class TestDialog:
+    """Dialog for running signal processing tests"""
+
+    def __init__(self, parent, gui):
+        self.parent = parent
+        self.gui = gui
+        self.dialog = None
+
+    def show(self):
+        """Display the test dialog"""
+        self.dialog = tk.Toplevel(self.parent)
+        self.dialog.title("Signal Processing Tests")
+        self.dialog.geometry("500x500")
+        self.dialog.transient(self.parent)
+        self.dialog.grab_set()
+
+        # Main frame
+        main_frame = tk.Frame(self.dialog)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        # Title
+        tk.Label(
+            main_frame,
+            text="Signal Processing Test Suite",
+            font=("Arial", 12, "bold")
+        ).pack(pady=10)
+
+        # Test selection
+        test_frame = tk.LabelFrame(main_frame, text="Select Test", font=("Arial", 9, "bold"))
+        test_frame.pack(fill=tk.X, pady=5)
+
+        self.test_var = tk.StringVar(value="squaring")
+
+        tests = [
+            ("Squaring Test", "squaring"),
+            ("Accumulation Test", "accumulation"),
+            ("Normalization Test", "normalization"),
+            ("Subtraction Test", "subtraction"),
+            ("Sinusoidal Test", "sinusoidal"),
+            ("Addition Test", "addition")
+        ]
+
+        for text, value in tests:
+            tk.Radiobutton(
+                test_frame,
+                text=text,
+                variable=self.test_var,
+                value=value,
+                font=("Arial", 8)
+            ).pack(anchor='w', padx=5, pady=2)
+
+        # Signal selection
+        signal_frame = tk.LabelFrame(main_frame, text="Select Signal", font=("Arial", 9, "bold"))
+        signal_frame.pack(fill=tk.X, pady=5)
+
+        self.signal_listbox = tk.Listbox(signal_frame, height=4, exportselection=False)
+        self.signal_listbox.pack(fill=tk.X, padx=5, pady=5)
+        self._populate_signal_list()
+
+        # For multi-signal operations
+        self.multi_signal_frame = tk.LabelFrame(main_frame, text="Select Additional Signals", font=("Arial", 9, "bold"))
+
+        # For addition (multiple signals)
+        self.addition_frame = tk.Frame(self.multi_signal_frame)
+        self.addition_frame.pack(fill=tk.X, padx=5, pady=5)
+        tk.Label(self.addition_frame, text="Select signals to add:").pack(anchor='w')
+        self.addition_listbox = tk.Listbox(self.addition_frame, height=4, selectmode=tk.MULTIPLE, exportselection=False)
+        self.addition_listbox.pack(fill=tk.X, pady=2)
+
+        # For subtraction (single second signal)
+        self.subtraction_frame = tk.Frame(self.multi_signal_frame)
+        self.subtraction_frame.pack(fill=tk.X, padx=5, pady=5)
+        tk.Label(self.subtraction_frame, text="Select second signal:").pack(anchor='w')
+        self.subtraction_listbox = tk.Listbox(self.subtraction_frame, height=4, exportselection=False)
+        self.subtraction_listbox.pack(fill=tk.X, pady=2)
+
+        # For normalization range
+        self.range_frame = tk.LabelFrame(main_frame, text="Normalization Range", font=("Arial", 9, "bold"))
+        self.range_var = tk.StringVar(value="-1_to_1")
+        tk.Radiobutton(
+            self.range_frame,
+            text="-1 to 1",
+            variable=self.range_var,
+            value="-1_to_1"
+        ).pack(anchor='w', padx=5, pady=2)
+        tk.Radiobutton(
+            self.range_frame,
+            text="0 to 1",
+            variable=self.range_var,
+            value="0_to_1"
+        ).pack(anchor='w', padx=5, pady=2)
+
+        # For sinusoidal wave type
+        self.sinusoidal_frame = tk.LabelFrame(main_frame, text="Sinusoidal Wave Type", font=("Arial", 9, "bold"))
+        self.wave_type_var = tk.StringVar(value="Sine")
+        tk.Radiobutton(
+            self.sinusoidal_frame,
+            text="Sine Wave",
+            variable=self.wave_type_var,
+            value="Sine"
+        ).pack(anchor='w', padx=5, pady=2)
+        tk.Radiobutton(
+            self.sinusoidal_frame,
+            text="Cosine Wave",
+            variable=self.wave_type_var,
+            value="Cosine"
+        ).pack(anchor='w', padx=5, pady=2)
+
+        # Expected output file selection (for all tests)
+        self.file_frame = tk.LabelFrame(main_frame, text="Expected Output File", font=("Arial", 9, "bold"))
+        file_select_frame = tk.Frame(self.file_frame)
+        file_select_frame.pack(fill=tk.X, padx=5, pady=5)
+        self.file_path_var = tk.StringVar()
+        self.file_entry = tk.Entry(  # Store as instance variable
+            file_select_frame,
+            textvariable=self.file_path_var,
+            state='readonly',
+            width=40
+        )
+        self.file_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.browse_button = tk.Button(  # Store as instance variable
+            file_select_frame,
+            text="Browse",
+            command=self._browse_file,
+            width=8
+        )
+        self.browse_button.pack(side=tk.RIGHT, padx=5)
+
+        # Buttons
+        button_frame = tk.Frame(main_frame)
+        button_frame.pack(pady=10)
+
+        tk.Button(
+            button_frame,
+            text="Run Test",
+            command=self._run_test,
+            width=12
+        ).pack(side=tk.LEFT, padx=5)
+
+        tk.Button(
+            button_frame,
+            text="Cancel",
+            command=self.dialog.destroy,
+            width=12
+        ).pack(side=tk.LEFT, padx=5)
+
+        # Update UI based on test type
+        self.test_var.trace('w', self._on_test_change)
+        self._populate_all_signal_lists()
+        self._on_test_change()
+
+    def _populate_all_signal_lists(self):
+        """Populate all signal listboxes"""
+        self._populate_signal_list([self.signal_listbox])
+        self._populate_signal_list([self.subtraction_listbox])
+        self._populate_signal_list([self.addition_listbox])
+
+    def _populate_signal_list(self, listboxes=None):
+        """Populate signal listboxes"""
+        if listboxes is None:
+            listboxes = [self.signal_listbox]
+
+        for listbox in listboxes:
+            listbox.delete(0, tk.END)
+            signals = self.gui.data_manager.get_all_signals()
+            for i, signal in enumerate(signals):
+                listbox.insert(tk.END, f"{i}: {signal['name']}")
+
+    def _browse_file(self):
+        """Browse for expected output file"""
+        if self.browse_button['state'] == 'normal':  # Only browse if button is enabled
+            file_path = filedialog.askopenfilename(
+                title="Select Expected Output File",
+                filetypes=[("Text files", "*.txt"), ("All files", "*.*")]
+            )
+            if file_path:
+                self.file_path_var.set(file_path)
+
+    def _on_test_change(self, *args):
+        """Update UI based on selected test type"""
+        test_type = self.test_var.get()
+
+        # Hide all optional frames
+        self.multi_signal_frame.pack_forget()
+        self.range_frame.pack_forget()
+        self.sinusoidal_frame.pack_forget()
+
+        # Show relevant frames
+        if test_type == "subtraction":
+            self.multi_signal_frame.pack(fill=tk.X, pady=5)
+            self.subtraction_frame.pack(fill=tk.X, padx=5, pady=5)
+            self.addition_frame.pack_forget()
+        elif test_type == "addition":
+            self.multi_signal_frame.pack(fill=tk.X, pady=5)
+            self.addition_frame.pack(fill=tk.X, padx=5, pady=5)
+            self.subtraction_frame.pack_forget()
+        elif test_type == "normalization":
+            self.range_frame.pack(fill=tk.X, pady=5)
+        elif test_type == "sinusoidal":
+            self.sinusoidal_frame.pack(fill=tk.X, pady=5)
+
+        # Enable/disable file browser based on test type
+        if test_type in ["subtraction", "normalization"]:
+            # Disable browse button for tests that use hardcoded file paths
+            self.browse_button.config(state='disabled')
+            self.file_entry.config(state='disabled')  # Also disable the entry field
+            self.file_path_var.set("")  # Clear any previous file path
+        else:
+            # Enable browse button for tests that need file selection
+            self.browse_button.config(state='normal')
+            self.file_entry.config(state='readonly')
+
+        # Always show file frame for all tests (but it may be disabled)
+        self.file_frame.pack(fill=tk.X, pady=5)
+
+
+    def _get_signal_file_name(self, signal_idx):
+        """Get the original file name of a signal or create a proper mapping"""
+        signal = self.gui.data_manager.get_signal(signal_idx)
+
+        # If signal was loaded from a file, it might have the original path
+        if 'file_path' in signal:
+            return os.path.basename(signal['file_path'])
+
+        # Check if we can extract from the name
+        name = signal['name']
+
+        # Map common signal names to what the test expects
+        name_lower = name.lower()
+
+        # Handle generated signals by mapping to expected test names
+        if 'signal1' in name_lower or signal_idx == 0:
+            return 'Signal1.txt'
+        elif 'signal2' in name_lower or signal_idx == 1:
+            return 'Signal2.txt'
+        elif 'signal3' in name_lower or signal_idx == 2:
+            return 'Signal3.txt'
+        else:
+            # For other signals, try to extract or use index-based naming
+            if '.txt' in name:
+                return name
+            else:
+                # Use the actual file names that the test function expects
+                return f"Signal{signal_idx + 1}.txt"
+
+    def _run_test(self):
+        """Run the selected test - results will print to terminal"""
+        try:
+            test_type = self.test_var.get()
+            selected_signals = self.signal_listbox.curselection()
+
+            if not selected_signals:
+                messagebox.showwarning("Warning", "Please select a signal")
+                return
+
+            signal2_idx = selected_signals[0]
+            signal = self.gui.data_manager.get_signal(signal2_idx)
+
+            # Get expected file path
+            expected_file = self.file_path_var.get()
+
+            # Import test functions
+            try:
+                from Data.Task2Test import (
+                    SignalSamplesAreEqual,
+                    NormalizeSignal,
+                    SubSignalSamplesAreEqual,
+                    SinCosSignalSamplesAreEqual
+                )
+            except ImportError:
+                messagebox.showerror("Error", "Test module 'Task2Test.py' not found")
+                return
+
+            # Run appropriate test - results will print to terminal
+            if test_type == "squaring":
+                result = self.gui.execute_operation("squaring", signal_index=signal2_idx)
+                if result:
+                    result_signal = self.gui.data_manager.get_all_signals()[-1]
+                    print(f"Running Squaring Test on signal: {signal['name']}")
+                    SignalSamplesAreEqual(
+                        "SQU",
+                        expected_file,
+                        result_signal["indices"],
+                        result_signal["samples"]
+                    )
+
+            elif test_type == "accumulation":
+                result = self.gui.execute_operation("accumulation", signal_index=signal2_idx)
+                if result:
+                    result_signal = self.gui.data_manager.get_all_signals()[-1]
+                    print(f"Running Accumulation Test on signal: {signal['name']}")
+                    SignalSamplesAreEqual(
+                        "ACC",
+                        expected_file,
+                        result_signal["indices"],
+                        result_signal["samples"]
+                    )
+
+            elif test_type == "normalization":
+                result = self.gui.execute_operation("normalization",
+                                                    signal_index=signal2_idx,
+                                                    target_range=self.range_var.get())
+                if result:
+                    result_signal = self.gui.data_manager.get_all_signals()[-1]
+                    print(f"Running Normalization Test on signal: {signal['name']}")
+                    # For normalization, we need to use the NormalizeSignal function
+                    # which expects MinRange and MaxRange parameters
+                    min_range = -1 if self.range_var.get() == "-1_to_1" else 0
+                    NormalizeSignal(
+                        min_range,
+                        1,
+                        result_signal["indices"],
+                        result_signal["samples"]
+                    )
+
+            elif test_type == "subtraction":
+                selected_signals2 = self.subtraction_listbox.curselection()
+                if not selected_signals2:
+                    messagebox.showwarning("Warning", "Please select second signal")
+                    return
+
+                signal1_idx = selected_signals2[0]
+                signal2 = self.gui.data_manager.get_signal(signal1_idx)
+
+                # DEBUG: Print what signals we're working with
+                print(f"Signal 1: {signal['name']}")
+                print(f"Signal 2: {signal2['name']}")
+
+                signal1_file = self._get_signal_file_name(signal2_idx)
+                signal2_file = self._get_signal_file_name(signal1_idx)
+
+                print(f"Signal 1 file name for test: {signal1_file}")
+                print(f"Signal 2 file name for test: {signal2_file}")
+
+                result = self.gui.execute_operation("subtraction",
+                                                    signal1_index=signal1_idx,
+                                                    signal2_index=signal2_idx)
+                if result:
+                    result_signal = self.gui.data_manager.get_all_signals()[-1]
+
+                    print(f"Running Subtraction Test on signals: {signal['name']} - {signal2['name']}")
+
+                    # FIX: Pass the actual file names that the test function expects
+
+                    # You need to get the original file names, not the display names
+
+                    signal1_file = self._get_signal_file_name(signal2_idx)
+
+                    signal2_file = self._get_signal_file_name(signal1_idx)
+
+                    print (f'running  {signal1_file} - {signal2_file}')
+                    SubSignalSamplesAreEqual(
+                        signal1_file,
+                        signal2_file,
+                        result_signal["indices"],
+                        result_signal["samples"]
+                    )
+
+            elif test_type == "addition":
+                selected_signals_add = self.addition_listbox.curselection()
+                if len(selected_signals_add) < 1:
+                    messagebox.showwarning("Warning", "Please select at least one additional signal to add")
+                    return
+
+                # Combine main signal with additional signals
+                all_indices = [signal2_idx] + list(selected_signals_add)
+                result = self.gui.execute_operation("addition", signal_indices=all_indices)
+                if result:
+                    result_signal = self.gui.data_manager.get_all_signals()[-1]
+                    print(f"Running Addition Test on {len(all_indices)} signals")
+                    SignalSamplesAreEqual(
+                        "Addition",
+                        expected_file,
+                        result_signal["indices"],
+                        result_signal["samples"]
+                    )
+
+            elif test_type == "sinusoidal":
+                # For sinusoidal test, we test an existing signal (should be a generated sine/cosine)
+                print(f"Running Sinusoidal Test on signal: {signal['name']}")
+                SinCosSignalSamplesAreEqual(
+                    self.wave_type_var.get(),
+                    expected_file,
+                    signal["indices"],
+                    signal["samples"]
+                )
+
+            # Close dialog after test
+            self.dialog.destroy()
+            messagebox.showinfo("Test Complete", "Test completed. Check terminal for results.")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Test failed:\n{str(e)}")
 
 def main():
     root = tk.Tk()

@@ -26,7 +26,7 @@ class SignalProcessor:
 
             if len(lines) < 3:
                 raise ValueError("File must have at least 4 lines")
-            if len(lines[2]) == '0':
+            if lines[2] == '0':
                 raise ValueError("File hase no samples for the signal")
 
             # Parse header
@@ -101,29 +101,59 @@ class SignalProcessor:
             "num_samples": max_len
         }
 
+    # @staticmethod
+    # def subtract_signals(signal1, signal2):
+    #     """Subtract signal2 from signal1 with zero-padding for different lengths"""
+    #     # Find maximum length
+    #     max_len = max(len(signal1["samples"]), len(signal2["samples"]))
+    #
+    #     # Use indices from longer signal
+    #     longest_indices = max([signal1, signal2], key=lambda s: len(s["indices"]))["indices"][:max_len]
+    #
+    #     # Perform subtraction with zero-padding
+    #     result_samples = []
+    #     for i in range(max_len):
+    #         val1 = signal1["samples"][i] if i < len(signal1["samples"]) else 0.0
+    #         val2 = signal2["samples"][i] if i < len(signal2["samples"]) else 0.0
+    #         result_samples.append(val1 - val2)
+    #
+    #     return {
+    #         "indices": np.array(longest_indices),
+    #         "samples": np.array(result_samples),
+    #         "signal_type": 0,
+    #         "is_periodic": 0,
+    #         "num_samples": max_len
+    #     }
+
     @staticmethod
     def subtract_signals(signal1, signal2):
-        """Subtract signal2 from signal1 with zero-padding for different lengths"""
-        # Find maximum length
-        max_len = max(len(signal1["samples"]), len(signal2["samples"]))
+        """Subtract signal2 from signal1 with proper index alignment"""
 
-        # Use indices from longer signal
-        longest_indices = max([signal1, signal2], key=lambda s: len(s["indices"]))["indices"][:max_len]
+        # Get all unique indices from both signals
+        all_indices = sorted(set(signal1["indices"]) | set(signal2["indices"]))
 
-        # Perform subtraction with zero-padding
+        # Create dictionaries for quick lookup
+        samples1_dict = dict(zip(signal1["indices"], signal1["samples"]))
+        samples2_dict = dict(zip(signal2["indices"], signal2["samples"]))
+
         result_samples = []
-        for i in range(max_len):
-            val1 = signal1["samples"][i] if i < len(signal1["samples"]) else 0.0
-            val2 = signal2["samples"][i] if i < len(signal2["samples"]) else 0.0
+        result_indices = []
+
+        # Perform subtraction with proper alignment
+        for index in all_indices:
+            val1 = samples1_dict.get(index, 0.0)  # Default to 0 if index not found
+            val2 = samples2_dict.get(index, 0.0)  # Default to 0 if index not found
             result_samples.append(val1 - val2)
+            result_indices.append(index)
 
         return {
-            "indices": np.array(longest_indices),
+            "indices": np.array(result_indices),
             "samples": np.array(result_samples),
             "signal_type": 0,
             "is_periodic": 0,
-            "num_samples": max_len
+            "num_samples": len(result_samples)
         }
+
 
     @staticmethod
     def multiply_signal(signal, constant):
@@ -141,7 +171,7 @@ class SignalProcessor:
         """Square signal samples"""
         return {
             "indices": signal["indices"],
-            "samples": signal["samples"] ** 4,  # square the sampels array
+            "samples": signal["samples"] ** 2,  # square the sampels array
             "signal_type": signal["signal_type"],
             "is_periodic": 0,
             "num_samples": signal["num_samples"]
