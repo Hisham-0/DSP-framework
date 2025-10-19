@@ -141,7 +141,6 @@ class SignalProcessor:
             "num_samples": len(result_samples)
         }
 
-
     @staticmethod
     def multiply_signal(signal, constant):
         """Multiply signal by constant"""
@@ -243,54 +242,44 @@ class SignalProcessor:
 
     @staticmethod
     def quantize_signal(signal, levels=None, bits=None):
-        """Quantize signal with given levels or bits - FIXED FOR TEST CASES"""
+
         samples = signal["samples"]
-        indices = signal["indices"]
+        indices = signal["indices"]  # for the display method only
 
         # Calculate levels from bits if bits provided
         if bits is not None:
             levels = 2 ** bits
         elif levels is not None:
             bits = math.ceil(math.log2(levels))
+            # ceiling the fractions
         else:
             raise ValueError("Either levels or bits must be provided")
 
-        if levels <= 1:
-            raise ValueError("Number of levels must be greater than 1")
-
-        # Find min and max of signal
+        # Find min and  max of signal
         min_val = np.min(samples)
         max_val = np.max(samples)
 
-        # Calculate step size
-        if max_val == min_val:
-            step = 0
-        else:
-            step = (max_val - min_val) / levels
+        # Calculate step size "the size of every level "
+        step = (max_val - min_val) / levels
 
         quantized_samples = []
         binary_codes = []
-        interval_indices = []
+        interval_indices = [] # display only
         error_samples = []
 
         for sample in samples:
-            if max_val == min_val:
-                # All samples are the same
-                level = 0
-                quantized_value = min_val
-            else:
-                # Find which interval the sample falls into
-                level = int((sample - min_val) / step)
+            # find which interval the sample is in
+            level = int((sample - min_val) / step)
 
-                # Handle edge case where sample equals max_val
-                if level >= levels:
-                    level = levels - 1
+            # Handle edge case where sample equals max_val
+            if level >= levels:
+                level = levels - 1
 
-                # Ensure level is within valid range
-                level = max(0, min(levels - 1, level))
+            # Ensure level is within valid range
+            level = max(0, min(levels - 1, level))
 
-                # Quantized value at the midpoint of the interval
-                quantized_value = min_val + (level + 0.5) * step
+            # Quantized value at the midpoint of the interval
+            quantized_value = min_val + (level + 0.5) * step
 
             # Generate binary code with exactly 'bits' bits
             binary_code = format(level, f'0{bits}b')
@@ -346,7 +335,6 @@ class SignalProcessor:
             "max_error": np.max(np.abs(error)),
             "mean_error": np.mean(error)
         }
-
 
 
 class SignalDataManager:

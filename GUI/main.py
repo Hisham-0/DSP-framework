@@ -8,6 +8,7 @@ import tkinter as tk
 from tkinter import messagebox, filedialog
 import os
 import sys
+from datetime import datetime
 
 # Import the left panel and plot area components
 from left_panel import LeftPanel
@@ -654,11 +655,6 @@ class SignalProcessingGUI:
                 signal_data["file_path"] = file_path
                 self.data_manager.add_signal(signal_data, signal_name)
                 self.left_panel.update_signal_list()
-                messagebox.showinfo(
-                    "Signal Loaded",
-                    f"Signal: {signal_name}\n"
-                    f"Samples: {signal_data['num_samples']}"
-                )
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to load signal:\n{str(e)}")
 
@@ -698,7 +694,7 @@ class SignalProcessingGUI:
                 interval_indices = quantization_result['interval_indices']
 
                 for i in range(len(indices)):
-                    f.write(f"{binary_codes[i]} {samples[i]:.6f}\n") #{interval_indices[i]}  {error_samples[i]:.6f}
+                    f.write(f"{binary_codes[i]} {samples[i]:.6f} {error_samples[i]:.6f}\n") #{interval_indices[i]}  {error_samples[i]:.6f}
 
             print(f"Quantization test file saved to: {file_path}")
             return file_path
@@ -833,7 +829,7 @@ class SignalProcessingGUI:
                     # Add ONLY the quantized signal to manager for display
                     quantized_signal = quantization_result["quantized_signal"]
 
-                    test_filename = f"quantization_test_output.txt"
+                    test_filename = f"quantization_test_output_{datetime.now().strftime("%H_%M_%S")}.txt"
 
                     # Save in test case format
                     file_path = self.save_quantization_test_file(quantization_result, test_filename)

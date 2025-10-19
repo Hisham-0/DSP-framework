@@ -31,4 +31,4 @@ def QuantizationTest1(file_name,Your_EncodedValues,Your_QuantizedValues):
         else:
             print("QuantizationTest1 Test case failed, your QuantizedValues have different values from the expected one") 
             return
-    print("QuantizationTest1 Test case passed successfully yeeee ")
+    print("QuantizationTest1 Test case passed successfully")
