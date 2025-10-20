@@ -694,7 +694,8 @@ class SignalProcessingGUI:
                 interval_indices = quantization_result['interval_indices']
 
                 for i in range(len(indices)):
-                    f.write(f"{binary_codes[i]} {samples[i]:.6f} {error_samples[i]:.6f}\n") #{interval_indices[i]}  {error_samples[i]:.6f}
+                    f.write(
+                        f"{binary_codes[i]} {samples[i]:.6f} {error_samples[i]:.6f}\n")  # {interval_indices[i]}  {error_samples[i]:.6f}
 
             print(f"Quantization test file saved to: {file_path}")
             return file_path
@@ -836,8 +837,6 @@ class SignalProcessingGUI:
 
                     self.data_manager.add_signal(SignalProcessor.parse_signal_file(file_path),
                                                  os.path.basename(file_path))
-
-
 
                     # Calculate and show metrics
                     metrics = SignalProcessor.calculate_quantization_metrics(
@@ -1372,7 +1371,7 @@ class TestDialog:
                 else:
                     quantization_result = SignalProcessor.quantize_signal(signal, levels=value)
 
-                # Extract the required data for tests
+                # Extract the required data from signal processor for tests
                 binary_encoded = quantization_result.get('binary_codes', [])
                 quantized_samples = quantization_result['quantized_signal']['samples']
                 error_samples = quantization_result['error_signal']['samples']
@@ -1390,16 +1389,16 @@ class TestDialog:
                 if test_type == "quantization1":
                     QuantizationTest1(
                         expected_file,
-                        binary_encoded,  # Your_EncodedValues
-                        quantized_samples  # Your_QuantizedValues
+                        binary_encoded,
+                        quantized_samples
                     )
                 elif test_type == "quantization2":
                     QuantizationTest2(
                         expected_file,
-                        interval_indices,  # Your_IntervalIndices (1-based)
-                        binary_encoded,  # Your_EncodedValues
-                        quantized_samples,  # Your_QuantizedValues
-                        error_samples  # Your_SampledError
+                        interval_indices,
+                        binary_encoded,
+                        quantized_samples,
+                        error_samples
                     )
 
             # Close dialog after test
@@ -1410,8 +1409,6 @@ class TestDialog:
             messagebox.showerror("Error", f"Test failed:\n{str(e)}")
             import traceback
             traceback.print_exc()
-
-
 
 
 def main():
