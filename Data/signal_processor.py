@@ -213,7 +213,7 @@ class SignalProcessor:
 
         quantized_samples = []
         binary_codes = []
-        interval_indices = [] # display only
+        interval_indices = []  # display only
         error_samples = []
 
         for sample in samples:
@@ -285,9 +285,112 @@ class SignalProcessor:
             "mean_error": np.mean(error)
         }
 
-    #---------------------------
-    #Task 3
-    #----------------------------
+    # ---------------------------
+    # Task 3
+    # ----------------------------
+    ""
+    # @staticmethod
+    # def compute_dft(signal, sampling_freq):
+    #     """Compute Discrete Fourier Transform of a signal"""
+    #     samples = signal["samples"]
+    #     N = len(samples)
+    #
+    #     # Compute DFT using numpy
+    #     dft_components = np.fft.fft(samples)
+    #
+    #     return dft_components
+    # @staticmethod
+    # def compute_dft(signal, sampling_freq):
+    #     """Compute Discrete Fourier Transform of a signal"""
+    #     samples = signal["samples"]
+    #     N = len(samples)
+    #
+    #     # Compute DFT using numpy
+    #     dft_components = np.fft.fft(samples)
+    #
+    #     return dft_components
+    #
+    # @staticmethod
+    # def compute_idft(dft_components, num_samples, original_time):
+    #     """Compute Inverse Discrete Fourier Transform"""
+    #     # Compute IDFT
+    #     reconstructed_samples = np.fft.ifft(dft_components)
+    #
+    #     # Return real part (since original signal is real)
+    #     return original_time, np.real(reconstructed_samples)
+
+    @staticmethod
+    def compute_dft(signal, sampling_freq):
+        """Compute Discrete Fourier Transform of a signal"""
+        samples = signal["samples"]
+        N = len(samples)
+
+        # Compute DFT using numpy
+        dft_components = np.fft.fft(samples)
+
+        # Calculate amplitudes and phases for testing
+        amplitudes = np.abs(dft_components) / N * 2
+        amplitudes[0] /= 2  # DC component not doubled
+        phases = np.angle(dft_components)
+
+        return {
+            'components': dft_components,
+            'amplitudes': amplitudes,
+            'phases': phases,
+            'frequencies': np.arange(N) * sampling_freq / N
+        }
+
+    @staticmethod
+    def compute_idft(dft_components, original_indices):
+        """Compute Inverse Discrete Fourier Transform"""
+        # Compute IDFT
+        reconstructed_samples = np.fft.ifft(dft_components)
+
+        # Return real part (since original signal is real)
+        return {
+            "indices": original_indices,
+            "samples": np.real(reconstructed_samples),
+            "signal_type": 0,
+            "is_periodic": 0,
+            "num_samples": len(reconstructed_samples)
+        }
+
+    @staticmethod
+    def remove_dc_component(signal):
+        """Remove DC component from signal"""
+        samples = signal["samples"]
+        dc_removed_samples = samples - np.mean(samples)
+
+        return {
+            "indices": signal["indices"],
+            "samples": dc_removed_samples,
+            "signal_type": signal["signal_type"],
+            "is_periodic": signal["is_periodic"],
+            "num_samples": signal["num_samples"]
+        }
+
+    @staticmethod
+    def get_dft_plot_data(dft_components, sampling_freq):
+        """Calculate frequencies, normalized amplitudes, and phases for plotting"""
+        N = len(dft_components)
+        frequencies = np.arange(N) * sampling_freq / N
+
+        # Get amplitudes and normalize
+        amplitudes = np.abs(dft_components)
+        normalized_amplitudes = amplitudes / N * 2
+        normalized_amplitudes[0] /= 2  # DC component is not doubled
+
+        # Clamp near-zero values
+        normalized_amplitudes[normalized_amplitudes < 1e-10] = 0
+
+        phases = np.angle(dft_components)
+        # Set phase to 0 where amplitude is 0
+        phases[normalized_amplitudes == 0] = 0
+
+        return frequencies, normalized_amplitudes, phases
+
+
+
 
 class SignalDataManager:
     """Manages signal data storage"""

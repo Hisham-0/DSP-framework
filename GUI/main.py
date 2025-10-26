@@ -5,13 +5,12 @@ This is the main application file that initializes and runs the signal processin
 """
 
 import tkinter as tk
-from tkinter import messagebox, filedialog
+from tkinter import messagebox, filedialog, simpledialog
 import os
 import sys
 from datetime import datetime
-
 import numpy as np
-
+from GUI.dft_window import DFTWindow
 from left_panel import LeftPanel
 from plot_area import PlotArea
 
@@ -49,6 +48,9 @@ class MenuBar:
 
         # Operations Menu
         self._create_operations_menu(menubar)
+
+        # frequency menu
+        self._create_frequency_domain_menu(menubar)
 
         # Display Menu
         self._create_display_menu(menubar)
@@ -133,6 +135,21 @@ class MenuBar:
         test_menu.add_command(
             label="Run Tests",
             command=lambda: TestDialog(self.root, self.gui).show()
+        )
+
+    def _create_frequency_domain_menu(self, menubar):
+        """Create Frequency Domain menu"""
+        freq_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Frequency Domain", menu=freq_menu)
+
+        freq_menu.add_command(
+            label="Fourier Transform",
+            command=self.gui.show_fourier_transform_dialog
+        )
+        freq_menu.add_separator()
+        freq_menu.add_command(
+            label="Run Fourier Tests",
+            command=lambda: FourierTestDialog(self.root, self.gui).show()
         )
 
     def _show_operation_dialog(self, title, operation_type):
@@ -630,6 +647,7 @@ class SignalProcessingGUI:
         self.root.state('zoomed')
 
         self.data_manager = SignalDataManager()
+        self.signal_processor = SignalProcessor
         self._setup_output_folder()
         self._build_interface()
 
@@ -912,6 +930,34 @@ class SignalProcessingGUI:
     # ---------------------------
     # task 3
     # --------------------------
+    def show_fourier_transform_dialog(self):
+        """Show Fourier Transform dialog"""
+        selected_indices = self.left_panel.get_selected_signals()
+        if not selected_indices:
+            messagebox.showwarning("Warning", "Please select a signal")
+            return
+
+        if len(selected_indices) > 1:
+            messagebox.showwarning("Warning", "Please select only one signal")
+            return
+
+        # Ask for sampling frequency
+        sampling_freq = simpledialog.askfloat(
+            "Sampling Frequency",
+            "Enter sampling frequency (Hz):",
+            parent=self.root,
+            minvalue=0.1,
+            initialvalue=100.0
+        )
+
+        if sampling_freq is None:
+            return
+
+        signal_index = selected_indices[0]
+        signal = self.data_manager.get_signal(signal_index)
+
+        # Open DFT window
+        DFTWindow(self.root, self, signal, sampling_freq)
 
 
 class TestDialog:
@@ -1386,6 +1432,200 @@ class TestDialog:
             import traceback
             traceback.print_exc()
 
+
+# --------------------- task 3 ------------------
+class FourierTestDialog:
+    """Dialog for running Fourier Transform tests"""
+
+    def __init__(self, parent, gui):
+        self.parent = parent
+        self.gui = gui
+        self.dialog = None
+
+    def show(self):
+        self.dialog = tk.Toplevel(self.parent)
+        self.dialog.title("Fourier Transform Tests")
+        self.dialog.geometry("500x400")
+        self.dialog.transient(self.parent)
+        self.dialog.grab_set()
+
+        tk.Label(self.dialog, text="Fourier Transform Test Suite",
+                 font=("Arial", 12, "bold")).pack(pady=10)
+
+        # Signal selection
+        signal_frame = tk.Frame(self.dialog)
+        signal_frame.pack(fill=tk.X, padx=10, pady=5)
+
+        tk.Label(signal_frame, text="Select signal:").pack(anchor='w')
+        self.signal_listbox = tk.Listbox(signal_frame, height=4, exportselection=False)
+        self.signal_listbox.pack(fill=tk.X, pady=2)
+        self._populate_signal_list()
+
+        # Expected file selection
+        file_frame = tk.Frame(self.dialog)
+        file_frame.pack(fill=tk.X, padx=10, pady=5)
+
+        tk.Label(file_frame, text="Expected output file:").pack(anchor='w')
+        file_select_frame = tk.Frame(file_frame)
+        file_select_frame.pack(fill=tk.X, pady=2)
+
+        self.file_path_var = tk.StringVar()
+        self.file_entry = tk.Entry(file_select_frame, textvariable=self.file_path_var,
+                                   state='readonly', width=40)
+        self.file_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        tk.Button(file_select_frame, text="Browse",
+                  command=self._browse_file).pack(side=tk.RIGHT, padx=5)
+
+        # Test buttons
+        test_frame = tk.Frame(self.dialog)
+        test_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        tests = [
+            ("DFT/IDFT Reconstruction Test", self._run_dft_idft_test),
+            ("DC Removal Test", self._run_dc_removal_test),
+            ("Compare with Expected Output", self._run_compare_test)
+        ]
+
+        for text, command in tests:
+            tk.Button(
+                test_frame,
+                text=text,
+                command=command,
+                width=30
+            ).pack(pady=5)
+
+        tk.Button(
+            test_frame,
+            text="Close",
+            command=self.dialog.destroy
+        ).pack(pady=10)
+
+    def _populate_signal_list(self):
+        """Populate signal listbox"""
+        self.signal_listbox.delete(0, tk.END)
+        signals = self.gui.data_manager.get_all_signals()
+        for i, signal in enumerate(signals):
+            self.signal_listbox.insert(tk.END, f"{i}: {signal['name']}")
+
+    def _browse_file(self):
+        """Browse for expected output file"""
+        file_path = filedialog.askopenfilename(
+            title="Select Expected Output File",
+            filetypes=[("Text files", "*.txt"), ("All files", "*.*")]
+        )
+        if file_path:
+            self.file_path_var.set(file_path)
+
+    def _run_dft_idft_test(self):
+        """Test DFT and IDFT reconstruction"""
+        try:
+            selected = self.signal_listbox.curselection()
+            if not selected:
+                messagebox.showwarning("Warning", "Please select a signal")
+                return
+
+            signal_idx = selected[0]
+            signal = self.gui.data_manager.get_signal(signal_idx)
+
+            # Ask for sampling frequency
+            sampling_freq = simpledialog.askfloat(
+                "Sampling Frequency",
+                "Enter sampling frequency (Hz):",
+                parent=self.dialog,
+                minvalue=0.1,
+                initialvalue=100.0
+            )
+
+            if sampling_freq is None:
+                return
+
+            # Compute DFT
+            dft_result = SignalProcessor.compute_dft(signal, sampling_freq)
+
+            # Compute IDFT
+            reconstructed_signal = SignalProcessor.compute_idft(
+                dft_result['components'], signal["indices"]
+            )
+
+            # Test reconstruction - USING EXISTING FUNCTION
+            from Data.signalcompare import SignalComapreAmplitude
+            success = SignalComapreAmplitude(signal["samples"], reconstructed_signal["samples"])
+
+            if success:
+                # Add reconstructed signal to manager
+                self.gui.data_manager.add_signal(
+                    reconstructed_signal,
+                    f"Reconstructed_{signal['name']}"
+                )
+                self.gui.left_panel.update_signal_list()
+                print("DFT/IDFT Test: PASSED")
+            else:
+                print("DFT/IDFT Test: FAILED")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"DFT/IDFT test failed:\n{str(e)}")
+
+    def _run_dc_removal_test(self):
+        """Test DC removal"""
+        try:
+            selected = self.signal_listbox.curselection()
+            if not selected:
+                messagebox.showwarning("Warning", "Please select a signal")
+                return
+
+            signal_idx = selected[0]
+            signal = self.gui.data_manager.get_signal(signal_idx)
+
+            # Remove DC component - USE EXISTING METHOD OR CREATE ONE
+            # First, you need to add this method to SignalProcessor:
+            dc_removed_signal = SignalProcessor.remove_dc_component(signal)
+
+            # Test DC removal - Check if mean is approximately zero
+            mean_after_removal = np.mean(dc_removed_signal["samples"])
+            success = abs(mean_after_removal) < 0.001  # Tolerance
+
+            if success:
+                # Add DC-removed signal to manager
+                self.gui.data_manager.add_signal(
+                    dc_removed_signal,
+                    f"DC_Removed_{signal['name']}"
+                )
+                self.gui.left_panel.update_signal_list()
+                print("DC Removal Test: PASSED")
+            else:
+                print(f"DC Removal Test: FAILED - Mean = {mean_after_removal}")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"DC removal test failed:\n{str(e)}")
+
+    def _run_compare_test(self):
+        """Compare with expected output file"""
+        try:
+            selected = self.signal_listbox.curselection()
+            expected_file = self.file_path_var.get()
+
+            if not selected:
+                messagebox.showwarning("Warning", "Please select a signal")
+                return
+            if not expected_file:
+                messagebox.showwarning("Warning", "Please select expected output file")
+                return
+
+            signal_idx = selected[0]
+            signal = self.gui.data_manager.get_signal(signal_idx)
+
+            # Use the correct function from CompareSignals.py
+            from Data.CompareSignals import SignalsAreEqual
+            SignalsAreEqual(
+                "Signal Comparison Test",  # TaskName parameter
+                expected_file,
+                signal["indices"],
+                signal["samples"]
+            )
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Comparison test failed:\n{str(e)}")
 
 # -----------------------------------------------------
 def main():
