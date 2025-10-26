@@ -50,9 +50,6 @@ class MenuBar:
         # Operations Menu
         self._create_operations_menu(menubar)
 
-        # Frequency Domain Menu - ADD THIS LINE
-        self._create_frequency_domain_menu(menubar)
-
         # Display Menu
         self._create_display_menu(menubar)
 
@@ -615,12 +612,13 @@ class QuantizationDialog:
         except Exception as e:
             messagebox.showerror("Error", f"Quantization failed:\n{str(e)}")
 
-#---------------------------
-#Task 3
-#----------------------------
+
+# ---------------------------
+# Task 3
+# ----------------------------
 
 
-#--------------------------------------------
+# --------------------------------------------
 
 
 class SignalProcessingGUI:
@@ -818,71 +816,34 @@ class SignalProcessingGUI:
                 result = SignalProcessor.accumulate_signal(signal)
                 name = f"Accumulated_{signal['name']}"
 
-            # In the quantization section of execute_operation method:
             elif operation_type == "quantization":
-                try:
-                    signal_index = kwargs['signal_index']
-                    signal = self.data_manager.get_signal(signal_index)
 
-                    if signal is None:
-                        messagebox.showerror("Error", "Selected signal not found")
-                        return False
+                signal_index = kwargs['signal_index']
+                signal = self.data_manager.get_signal(signal_index)
 
-                    levels = kwargs.get('levels')
-                    bits = kwargs.get('bits')
+                # Ensure we're working with NumPy arrays
+                if not isinstance(signal['samples'], np.ndarray):
+                    signal['samples'] = np.array(signal['samples'])
+                if not isinstance(signal['indices'], np.ndarray):
+                    signal['indices'] = np.array(signal['indices'])
 
-                    print(f"Quantizing signal {signal_index} with bits={bits}, levels={levels}")
+                levels = kwargs.get('levels')
+                bits = kwargs.get('bits')
 
-                    # Perform quantization
-                    quantization_result = SignalProcessor.quantize_signal(
-                        signal, levels=levels, bits=bits
-                    )
+                quantization_result = SignalProcessor.quantize_signal(
+                    signal, levels=levels, bits=bits
+                )
 
-                    # Add ONLY the quantized signal to manager for display
-                    quantized_signal = quantization_result["quantized_signal"]
+                # The quantized signal should already have NumPy arrays
+                quantized_signal = quantization_result["quantized_signal"]
 
-                    test_filename = f"quantization_test_output_{datetime.now().strftime("%H_%M_%S")}.txt"
+                # Save and parse to ensure consistent format
+                test_filename = f"quantization_test_output_{datetime.now().strftime('%H_%M_%S')}.txt"
+                file_path = self.save_quantization_test_file(quantization_result, test_filename)
 
-                    # Save in test case format
-                    file_path = self.save_quantization_test_file(quantization_result, test_filename)
-
-                    self.data_manager.add_signal(SignalProcessor.parse_signal_file(file_path),
-                                                 os.path.basename(file_path))
-
-                    # Calculate and show metrics
-                    metrics = SignalProcessor.calculate_quantization_metrics(
-                        signal, quantized_signal
-                    )
-
-                    quant_info = quantization_result["quantization_info"]
-                    metrics_text = (
-                        f"Quantization Complete!\n\n"
-                        f"Parameters:\n"
-                        f"• Levels: {quant_info['levels']}\n"
-                        f"• Bits: {quant_info['bits']}\n"
-                        f"• Range: [{quant_info['min_val']:.3f}, {quant_info['max_val']:.3f}]\n"
-                        f"• Step Size: {quant_info['step_size']:.3f}\n\n"
-                        f"Performance:\n"
-                        f"• MSE: {metrics['mse']:.6f}\n"
-                        f"• RMSE: {metrics['rmse']:.6f}\n"
-                        f"• SNR: {metrics['snr_db']:.2f} dB\n"
-                        f"• Max Error: {metrics['max_error']:.6f}\n\n"
-                        f"Quantized signal saved as: {test_filename}"
-                    )
-
-                    messagebox.showinfo("Quantization Complete", metrics_text)
-
-                    # Update display
-                    self.left_panel.update_signal_list()
-                    self.update_plot_display()
-
-                    return True
-
-                except Exception as e:
-                    messagebox.showerror("Error", f"Quantization failed:\n{str(e)}")
-                    import traceback
-                    traceback.print_exc()
-                    return False
+                # This will convert to NumPy arrays in parse_signal_file
+                parsed_signal = SignalProcessor.parse_signal_file(file_path)
+                self.data_manager.add_signal(parsed_signal, os.path.basename(file_path))
 
             if result and name:
                 self.data_manager.add_signal(result, name)
@@ -948,9 +909,9 @@ class SignalProcessingGUI:
         """Show quantization dialog"""
         QuantizationDialog(self.root, self).show()
 
-    #---------------------------
-    #task 3
-    #--------------------------
+    # ---------------------------
+    # task 3
+    # --------------------------
 
 
 class TestDialog:
@@ -1426,7 +1387,7 @@ class TestDialog:
             traceback.print_exc()
 
 
-#-----------------------------------------------------
+# -----------------------------------------------------
 def main():
     root = tk.Tk()
     app = SignalProcessingGUI(root)

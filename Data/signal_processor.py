@@ -12,23 +12,12 @@ class SignalProcessor:
 
     @staticmethod
     def parse_signal_file(file_path):
-        """
-        that handel the all lines of the file.
-        file format:
-        Line 1: Signal Type 0/Time or 1/Frequency
-        Line 2: Periodicity (0/1)
-        Line 3: Num Samples N
-        Line 4+: Data (Index Amplitude)
-        And return a dictionary after sampling .
-        """
         try:
-            with open(file_path, 'r') as file:  # 'r' read mode
-                lines = [line.strip() for line in file.readlines() if line.strip()]  # load all file lines
+            with open(file_path, 'r') as file:
+                lines = [line.strip() for line in file.readlines() if line.strip()]
 
             if len(lines) < 3:
                 raise ValueError("File must have at least 4 lines")
-            if lines[2] == '0':
-                raise ValueError("File hase no samples for the signal")
 
             # Parse header
             signal_type = int(lines[0])
@@ -38,55 +27,44 @@ class SignalProcessor:
             indices = []
             samples = []
 
-            # Parse data lines
             for i in range(3, min(3 + num_samples_header, len(lines))):
                 parts = lines[i].split()
-
-                if len(parts) >= 2:  # check it hase split correct
-
+                if len(parts) >= 2:
                     index_str = parts[0].rstrip('f')
                     sample_str = parts[1].rstrip('f')
-
                     indices.append(float(index_str))
                     samples.append(float(sample_str))
 
-            # return Dictionary after filtering the data
+            # ENSURE NUMPY ARRAYS - this is key
             return {
-                "indices": np.array(indices),
-                "samples": np.array(samples),
+                "indices": np.array(indices, dtype=float),
+                "samples": np.array(samples, dtype=float),
                 "signal_type": signal_type,
                 "is_periodic": is_periodic,
                 "num_samples": len(samples)
             }
-        # for errors only 😑
         except Exception as e:
             raise ValueError(f"Error parsing file: {str(e)}")
 
     @staticmethod
     def add_signals(signals):
-        """Add multiple signals (handles unequal lengths by zero-padding)"""
         if len(signals) < 2:
             raise ValueError("Need at least 2 signals to perform addition")
 
-        # If signals have different indices, will take the max indices
-        longest_indices = max(signals, key=lambda s: len(s["indices"]))["indices"]
-
-        # Find the maximum signal sample length
+        # Use NumPy for all operations
         max_len = max(len(sig["samples"]) for sig in signals)
 
-        result_samples = [0.0] * max_len
-        # Perform addition with zero-padding
-        for sig in signals:
-            for i in range(max_len):
-                if i < len(sig["samples"]):
-                    result_samples[i] += sig["samples"][i]
-                else:
-                    result_samples[i] += 0  # Explicitly showing zero-padding
+        # Initialize result with zeros using NumPy
+        result_samples = np.zeros(max_len)
 
-        # return the resulting signal dictionary
+        for sig in signals:
+            # Pad signal to max length using NumPy
+            padded_samples = np.pad(sig["samples"], (0, max_len - len(sig["samples"])), 'constant')
+            result_samples += padded_samples  # Vectorized addition
+
         return {
-            "indices": np.array(longest_indices[:max_len]),
-            "samples": np.array(result_samples),
+            "indices": np.arange(max_len),  # Proper NumPy indices
+            "samples": result_samples,
             "signal_type": 0,
             "is_periodic": 0,
             "num_samples": max_len
@@ -145,22 +123,21 @@ class SignalProcessor:
 
     @staticmethod
     def normalize_signal(signal, target_range):
-        """Normalize signal to range"""
         samples = signal["samples"]
         min_val = np.min(samples)
         max_val = np.max(samples)
 
         if max_val == min_val:
-            normalized = [0] * len(samples)
+            normalized = np.zeros_like(samples)  # NumPy zeros
         else:
-            normalized = [(s - min_val) / (max_val - min_val) for s in samples]
+            normalized = (samples - min_val) / (max_val - min_val)  # Vectorized
 
             if target_range == "-1_to_1":
-                normalized = [2 * n - 1 for n in normalized]
+                normalized = 2 * normalized - 1  # Vectorized
 
         return {
             "indices": signal["indices"],
-            "samples": np.array(normalized),
+            "samples": normalized,
             "signal_type": signal["signal_type"],
             "is_periodic": signal["is_periodic"],
             "num_samples": signal["num_samples"]
@@ -168,18 +145,10 @@ class SignalProcessor:
 
     @staticmethod
     def accumulate_signal(signal):
-        """Accumulate signal (running sum)"""
-        samples = signal["samples"]
-        accumulated = []
-        total = 0
-
-        for s in samples:
-            total += s
-            accumulated.append(total)
-
+        """Use NumPy cumsum for accumulation"""
         return {
             "indices": signal["indices"],
-            "samples": accumulated,
+            "samples": np.cumsum(signal["samples"]),  # Vectorized accumulation
             "signal_type": signal["signal_type"],
             "is_periodic": 0,
             "num_samples": signal["num_samples"]
@@ -327,8 +296,15 @@ class SignalDataManager:
         self.signals = []
 
     def add_signal(self, signal_data, name=""):
-        """Add signal to manager"""
+        """Add signal to manager - ensure samples and indices are NumPy arrays"""
         signal_data["name"] = name
+
+        # Convert to NumPy arrays if they aren't already
+        if not isinstance(signal_data["indices"], np.ndarray):
+            signal_data["indices"] = np.array(signal_data["indices"])
+        if not isinstance(signal_data["samples"], np.ndarray):
+            signal_data["samples"] = np.array(signal_data["samples"])
+
         self.signals.append(signal_data)
         return len(self.signals) - 1
 
