@@ -19,7 +19,7 @@ class SignalProcessor:
         Line 2: Periodicity (0/1)
         Line 3: Num Samples N
         Line 4+: Data (Index Amplitude)
-        And it return a dictionary after sampling .
+        And return a dictionary after sampling .
         """
         try:
             with open(file_path, 'r') as file:  # 'r' read mode
@@ -43,8 +43,12 @@ class SignalProcessor:
                 parts = lines[i].split()
 
                 if len(parts) >= 2:  # check it hase split correct
-                    indices.append(float(parts[0]))
-                    samples.append(float(parts[1]))
+
+                    index_str = parts[0].rstrip('f')
+                    sample_str = parts[1].rstrip('f')
+
+                    indices.append(float(index_str))
+                    samples.append(float(sample_str))
 
             # return Dictionary after filtering the data
             return {
@@ -87,30 +91,6 @@ class SignalProcessor:
             "is_periodic": 0,
             "num_samples": max_len
         }
-
-    # @staticmethod
-    # def subtract_signals(signal1, signal2):
-    #     """Subtract signal2 from signal1 with zero-padding for different lengths"""
-    #     # Find maximum length
-    #     max_len = max(len(signal1["samples"]), len(signal2["samples"]))
-    #
-    #     # Use indices from longer signal
-    #     longest_indices = max([signal1, signal2], key=lambda s: len(s["indices"]))["indices"][:max_len]
-    #
-    #     # Perform subtraction with zero-padding
-    #     result_samples = []
-    #     for i in range(max_len):
-    #         val1 = signal1["samples"][i] if i < len(signal1["samples"]) else 0.0
-    #         val2 = signal2["samples"][i] if i < len(signal2["samples"]) else 0.0
-    #         result_samples.append(val1 - val2)
-    #
-    #     return {
-    #         "indices": np.array(longest_indices),
-    #         "samples": np.array(result_samples),
-    #         "signal_type": 0,
-    #         "is_periodic": 0,
-    #         "num_samples": max_len
-    #     }
 
     @staticmethod
     def subtract_signals(signal1, signal2):
@@ -336,6 +316,9 @@ class SignalProcessor:
             "mean_error": np.mean(error)
         }
 
+    #---------------------------
+    #Task 3
+    #----------------------------
 
 class SignalDataManager:
     """Manages signal data storage"""

@@ -10,7 +10,8 @@ import os
 import sys
 from datetime import datetime
 
-# Import the left panel and plot area components
+import numpy as np
+
 from left_panel import LeftPanel
 from plot_area import PlotArea
 
@@ -48,6 +49,9 @@ class MenuBar:
 
         # Operations Menu
         self._create_operations_menu(menubar)
+
+        # Frequency Domain Menu - ADD THIS LINE
+        self._create_frequency_domain_menu(menubar)
 
         # Display Menu
         self._create_display_menu(menubar)
@@ -611,6 +615,13 @@ class QuantizationDialog:
         except Exception as e:
             messagebox.showerror("Error", f"Quantization failed:\n{str(e)}")
 
+#---------------------------
+#Task 3
+#----------------------------
+
+
+#--------------------------------------------
+
 
 class SignalProcessingGUI:
     """Main GUI Controller Class"""
@@ -936,6 +947,10 @@ class SignalProcessingGUI:
     def show_quantization_dialog(self):
         """Show quantization dialog"""
         QuantizationDialog(self.root, self).show()
+
+    #---------------------------
+    #task 3
+    #--------------------------
 
 
 class TestDialog:
@@ -1411,6 +1426,7 @@ class TestDialog:
             traceback.print_exc()
 
 
+#-----------------------------------------------------
 def main():
     root = tk.Tk()
     app = SignalProcessingGUI(root)
