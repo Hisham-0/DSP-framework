@@ -288,72 +288,156 @@ class SignalProcessor:
     # ---------------------------
     # Task 3
     # ----------------------------
-    ""
-    # @staticmethod
-    # def compute_dft(signal, sampling_freq):
-    #     """Compute Discrete Fourier Transform of a signal"""
-    #     samples = signal["samples"]
-    #     N = len(samples)
-    #
-    #     # Compute DFT using numpy
-    #     dft_components = np.fft.fft(samples)
-    #
-    #     return dft_components
-    # @staticmethod
-    # def compute_dft(signal, sampling_freq):
-    #     """Compute Discrete Fourier Transform of a signal"""
-    #     samples = signal["samples"]
-    #     N = len(samples)
-    #
-    #     # Compute DFT using numpy
-    #     dft_components = np.fft.fft(samples)
-    #
-    #     return dft_components
-    #
-    # @staticmethod
-    # def compute_idft(dft_components, num_samples, original_time):
-    #     """Compute Inverse Discrete Fourier Transform"""
-    #     # Compute IDFT
-    #     reconstructed_samples = np.fft.ifft(dft_components)
-    #
-    #     # Return real part (since original signal is real)
-    #     return original_time, np.real(reconstructed_samples)
 
     @staticmethod
     def compute_dft(signal, sampling_freq):
-        """Compute Discrete Fourier Transform of a signal"""
+        """
+        Compute Discrete Fourier Transform manually without using np.fft
+
+        DFT Formula: X(k) = Σ(n=0 to N-1) x(n) * e^(-j*2π*k*n/N)
+        where:
+        - X(k) is the k-th frequency component
+        - x(n) is the n-th time domain sample
+        - N is the total number of samples
+        - j is the imaginary unit (sqrt(-1))
+        - k is the frequency bin index (0 to N-1)
+    """
         samples = signal["samples"]
         N = len(samples)
 
-        # Compute DFT using numpy
-        dft_components = np.fft.fft(samples)
+        # Initialize array to store complex DFT components
+        dft_components = np.zeros(N, dtype=complex)
 
-        # Calculate amplitudes and phases for testing
+        # For each frequency bin k (0 to N-1)
+        for k in range(N):
+            # Initialize the k-th frequency component as complex number
+            real_part = 0.0
+            imag_part = 0.0
+
+            # Sum over all time domain samples n (0 to N-1)
+            for n in range(N):
+                # Calculate the angle: -2π*k*n/N
+                angle = -2.0 * np.pi * k * n / N
+
+                # Using Euler's formula: e^(jθ) = cos(θ) + j*sin(θ)
+                # For e^(-jθ) = cos(θ) - j*sin(θ)
+                cos_component = np.cos(angle)
+                sin_component = np.sin(angle)
+
+                real_part += samples[n] * cos_component
+                imag_part += samples[n] * (-sin_component)
+
+            # Store the complex result for this frequency bin
+            dft_components[k] = complex(real_part, imag_part)
+
         amplitudes = np.abs(dft_components) / N * 2
-        amplitudes[0] /= 2  # DC component not doubled
+        amplitudes[0] /= 2  # DC component (k=0) is not doubled
+
+        # Calculate phases from complex components
+        # Phase = angle(X(k)) = arctan(imag/real)
         phases = np.angle(dft_components)
+
+        frequencies = np.arange(N) * sampling_freq / N
 
         return {
             'components': dft_components,
             'amplitudes': amplitudes,
             'phases': phases,
-            'frequencies': np.arange(N) * sampling_freq / N
+            'frequencies': frequencies
         }
+
+    # @staticmethod
+    # def compute_idft(dft_components, num_samples, original_indices):
+    #     """
+    #     Compute Inverse Discrete Fourier Transform manually without using np.fft
+    #         """
+    #     N = num_samples
+    #
+    #     # Initialize array to store reconstructed time domain samples
+    #     reconstructed_samples = np.zeros(N, dtype=complex)
+    #
+    #     # For each time sample n (0 to N-1)
+    #     for n in range(N):
+    #         # Initialize the n-th time sample as complex number
+    #         real_part = 0.0
+    #         imag_part = 0.0
+    #
+    #         # Sum over all frequency components k (0 to N-1)
+    #         for k in range(N):
+    #             # Calculate the angle: +2π*k*n/N (note: positive for IDFT)
+    #             angle = 2.0 * np.pi * k * n / N
+    #
+    #             # Using Euler's formula: e^(jθ) = cos(θ) + j*sin(θ)
+    #             cos_component = np.cos(angle)
+    #             sin_component = np.sin(angle)
+    #
+    #             # Get the k-th frequency component (complex number)
+    #             X_k_real = dft_components[k].real
+    #             X_k_imag = dft_components[k].imag
+    #
+    #             real_part += X_k_real * cos_component - X_k_imag * sin_component
+    #             imag_part += X_k_real * sin_component + X_k_imag * cos_component
+    #
+    #         # Apply normalization factor (1/N) and store result
+    #         reconstructed_samples[n] = complex(real_part / N, imag_part / N)
+    #
+    #     # Return only the real part since original signal was real
+    #     # (imaginary part should be near zero due to numerical precision)
+    #     return original_indices, np.real(reconstructed_samples)
 
     @staticmethod
-    def compute_idft(dft_components, original_indices):
-        """Compute Inverse Discrete Fourier Transform"""
-        # Compute IDFT
-        reconstructed_samples = np.fft.ifft(dft_components)
+    def compute_idft(dft_components, num_samples=None, original_indices=None):
+        """
+        Compute Inverse Discrete Fourier Transform manually without using np.fft
 
-        # Return real part (since original signal is real)
-        return {
-            "indices": original_indices,
-            "samples": np.real(reconstructed_samples),
-            "signal_type": 0,
-            "is_periodic": 0,
-            "num_samples": len(reconstructed_samples)
-        }
+        Args:
+            dft_components: Complex DFT components array
+            num_samples: Number of samples in the reconstructed signal
+            original_indices: Original time indices for the reconstructed signal
+
+        Returns:
+            tuple: (time_indices, time_domain_samples) - The reconstructed signal in time domain
+        """
+        N = len(dft_components) if num_samples is None else num_samples
+
+        # Initialize array to store reconstructed time domain samples
+        reconstructed_samples = np.zeros(N, dtype=complex)
+
+        # For each time sample n (0 to N-1)
+        for n in range(N):
+            # Initialize the n-th time sample as complex number
+            real_part = 0.0
+            imag_part = 0.0
+
+            # Sum over all frequency components k (0 to N-1)
+            for k in range(len(dft_components)):
+                # Calculate the angle: +2π*k*n/N (note: positive for IDFT)
+                angle = 2.0 * np.pi * k * n / N
+
+                # Using Euler's formula: e^(jθ) = cos(θ) + j*sin(θ)
+                cos_component = np.cos(angle)
+                sin_component = np.sin(angle)
+
+                # Get the k-th frequency component (complex number)
+                X_k_real = dft_components[k].real
+                X_k_imag = dft_components[k].imag
+
+                real_part += X_k_real * cos_component - X_k_imag * sin_component
+                imag_part += X_k_real * sin_component + X_k_imag * cos_component
+
+            # Apply normalization factor (1/N) and store result
+            reconstructed_samples[n] = complex(real_part / N, imag_part / N)
+
+        # Generate time indices if not provided
+        if original_indices is None:
+            time_indices = np.arange(N)
+        else:
+            time_indices = original_indices
+
+        # Return only the real part since original signal was real
+        # (imaginary part should be near zero due to numerical precision)
+        print(f"{time_indices } {np.real(reconstructed_samples)} \n")
+        return time_indices, np.real(reconstructed_samples)
 
     @staticmethod
     def remove_dc_component(signal):
@@ -388,8 +472,6 @@ class SignalProcessor:
         phases[normalized_amplitudes == 0] = 0
 
         return frequencies, normalized_amplitudes, phases
-
-
 
 
 class SignalDataManager:
