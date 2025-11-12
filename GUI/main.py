@@ -10,7 +10,7 @@ import os
 import sys
 from datetime import datetime
 import numpy as np
-from GUI.dft_window import DFTWindow
+from dft_window import DFTWindow
 from left_panel import LeftPanel
 from plot_area import PlotArea
 
