@@ -290,61 +290,28 @@ class SignalProcessor:
     # ----------------------------
 
     @staticmethod
-    def compute_dft(signal, sampling_freq):
-        """
-        Compute Discrete Fourier Transform manually without using np.fft
+    def compute_dft(self, signal):
+        signal = np.asarray(signal, dtype=complex)
+        N = signal.shape[0]
 
-        DFT Formula: X(k) = Σ(n=0 to N-1) x(n) * e^(-j*2π*k*n/N)
-        where:
-        - X(k) is the k-th frequency component
-        - x(n) is the n-th time domain sample
-        - N is the total number of samples
-        - j is the imaginary unit (sqrt(-1))
-        - k is the frequency bin index (0 to N-1)
-    """
-        samples = signal["samples"]
-        N = len(samples)
+        # Base case: if length is 1, return the signal itself
+        if N <= 1:
+            return signal
 
-        # Initialize array to store complex DFT components
-        dft_components = np.zeros(N, dtype=complex)
+        # Check that N is a power of 2 for efficiency
+        if N % 2 != 0:
+            raise ValueError("Signal length must be a power of 2")
 
-        # For each frequency bin k (0 to N-1)
-        for k in range(N):
-            # Initialize the k-th frequency component as complex number
-            real_part = 0.0
-            imag_part = 0.0
+        # Split into even and odd parts
+        even = self.compute_dft(self, signal[::2])
+        odd = self.compute_dft(self, signal[1::2])
 
-            # Sum over all time domain samples n (0 to N-1)
-            for n in range(N):
-                # Calculate the angle: -2π*k*n/N
-                angle = -2.0 * np.pi * k * n / N
+        # Compute the twiddle factors (complex roots of unity)
+        k = np.arange(N // 2)
+        twiddle = np.exp(-2j * np.pi * k / N) * odd
 
-                # Using Euler's formula: e^(jθ) = cos(θ) + j*sin(θ)
-                # For e^(-jθ) = cos(θ) - j*sin(θ)
-                cos_component = np.cos(angle)
-                sin_component = np.sin(angle)
-
-                real_part += samples[n] * cos_component
-                imag_part += samples[n] * (-sin_component)
-
-            # Store the complex result for this frequency bin
-            dft_components[k] = complex(real_part, imag_part)
-
-        amplitudes = np.abs(dft_components) / N * 2
-        amplitudes[0] /= 2  # DC component (k=0) is not doubled
-
-        # Calculate phases from complex components
-        # Phase = angle(X(k)) = arctan(imag/real)
-        phases = np.angle(dft_components)
-
-        frequencies = np.arange(N) * sampling_freq / N
-
-        return {
-            'components': dft_components,
-            'amplitudes': amplitudes,
-            'phases': phases,
-            'frequencies': frequencies
-        }
+        # Combine
+        return np.concatenate([even + twiddle, even - twiddle])
 
     # @staticmethod
     # def compute_idft(dft_components, num_samples, original_indices):

@@ -21,14 +21,14 @@ class DFTWindow:
         self.gui = gui
         self.signal = signal
         self.sampling_freq = sampling_freq
+        SignalProcessor_ins = SignalProcessor()
 
         # Compute DFT - handle the dictionary response
-        dft_result = self.gui.signal_processor.compute_dft(signal, sampling_freq)
-        self.dft_components = dft_result['components']  # Extract the components array
+        self.dft_result = SignalProcessor_ins.compute_dft(SignalProcessor_ins, signal["samples"])
         self.num_samples = len(signal["samples"])
 
         # Store original components for reset functionality
-        self.original_components = self.dft_components.copy()
+        self.original_components = self.dft_result.copy()
 
         # Normalization factors - computed from actual amplitudes
         self.amp_min = 0
@@ -224,7 +224,7 @@ class DFTWindow:
         """Update plots, table, and info panel"""
         # Get frequency domain data
         frequencies, actual_amplitudes, phases = self.gui.signal_processor.get_dft_plot_data(
-            self.dft_components, self.sampling_freq
+            self.dft_result, self.sampling_freq
         )
 
         # Normalize amplitudes
@@ -305,12 +305,12 @@ class DFTWindow:
         index = int(values[0])
 
         # Get current values
-        current_actual_amp = np.abs(self.dft_components[index])
-        current_phase = np.angle(self.dft_components[index])
+        current_actual_amp = np.abs(self.dft_result[index])
+        current_phase = np.angle(self.dft_result[index])
 
         # Get current normalized amplitude
         frequencies, actual_amps, _ = self.gui.signal_processor.get_dft_plot_data(
-            self.dft_components, self.sampling_freq
+            self.dft_result, self.sampling_freq
         )
         normalized_amps = self._normalize_amplitudes(actual_amps)
         current_norm_amp = normalized_amps[index]
@@ -381,7 +381,7 @@ class DFTWindow:
                 new_actual_amp = self._denormalize_amplitude(new_norm_amp)
 
                 # Update the DFT component
-                self.dft_components[index] = new_actual_amp * np.exp(1j * new_phase)
+                self.dft_result[index] = new_actual_amp * np.exp(1j * new_phase)
 
                 edit_window.destroy()
                 self.refresh_all()
@@ -414,7 +414,7 @@ class DFTWindow:
             "This will set F(0) to zero."
         )
         if response:
-            self.dft_components[0] = 0 + 0j
+            self.dft_result[0] = 0 + 0j
             self.refresh_all()
             messagebox.showinfo("Success", "DC component removed")
 
@@ -425,7 +425,7 @@ class DFTWindow:
             "Reset all frequency components to their original values?"
         )
         if response:
-            self.dft_components = self.original_components.copy()
+            self.dft_result = self.original_components.copy()
             self.refresh_all()
             messagebox.showinfo("Success", "Components reset to original values")
 

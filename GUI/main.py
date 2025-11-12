@@ -10,9 +10,9 @@ import os
 import sys
 from datetime import datetime
 import numpy as np
-from dft_window import DFTWindow
-from left_panel import LeftPanel
-from plot_area import PlotArea
+from GUI.dft_window import DFTWindow
+from GUI.left_panel import LeftPanel
+from GUI.plot_area import PlotArea
 
 # Import business logic from Data folder
 try:
