@@ -291,27 +291,28 @@ class SignalProcessor:
 
     @staticmethod
     def compute_dft(self, signal):
-        signal = np.asarray(signal, dtype=complex)
+        signal = np.asarray(signal, dtype=complex) #turn into complex
         N = signal.shape[0]
 
-        # Base case: if length is 1, return the signal itself
+        #Base case
         if N <= 1:
             return signal
 
-        # Check that N is a power of 2 for efficiency
+        #Check that N is a power of 2
         if N % 2 != 0:
-            raise ValueError("Signal length must be a power of 2")
+            print("Signal length must be a power of 2")
+            return -1
 
-        # Split into even and odd parts
+        #Split into even and odd parts
         even = self.compute_dft(self, signal[::2])
         odd = self.compute_dft(self, signal[1::2])
 
-        # Compute the twiddle factors (complex roots of unity)
+        #Compute the W (twiddle)
         k = np.arange(N // 2)
-        twiddle = np.exp(-2j * np.pi * k / N) * odd
+        W = np.exp(-2j * np.pi * k / N) * odd
 
-        # Combine
-        return np.concatenate([even + twiddle, even - twiddle])
+        #Combine
+        return np.concatenate([even + W, even - W])
 
     # @staticmethod
     # def compute_idft(dft_components, num_samples, original_indices):
