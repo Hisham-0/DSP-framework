@@ -267,6 +267,10 @@ class SignalProcessor:
 
     @staticmethod
     def calculate_quantization_metrics(original_signal, quantized_signal):
+
+
+
+
         """Calculate quantization performance metrics"""
         original = original_signal["samples"]
         quantized = quantized_signal["samples"]
@@ -276,7 +280,7 @@ class SignalProcessor:
         rmse = np.sqrt(mse)
         signal_power = np.mean(original ** 2)
         snr = 10 * np.log10(signal_power / mse) if mse > 0 else float('inf')
-
+        print(f"{mse} {rmse} {snr} {np.max(np.abs(error))} {np.mean(error)} \n")    
         return {
             "mse": mse,
             "rmse": rmse,
