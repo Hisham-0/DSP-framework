@@ -13,7 +13,7 @@ import numpy as np
 from GUI.dft_window import DFTWindow
 from GUI.left_panel import LeftPanel
 from GUI.plot_area import PlotArea
-from GUI.TimeDomain import create_TimeDomain
+from GUI.TimeDomain import attach_time_domain_menu
 
 # Import business logic from Data folder
 try:
@@ -57,7 +57,7 @@ class MenuBar:
         self._create_display_menu(menubar)
 
         # Time Domain menu
-        self._create_TimeDomain_menu(menubar)
+        attach_time_domain_menu(self.root, menubar)
 
         # Test menu
         self._create_test_menu(menubar)
@@ -139,15 +139,6 @@ class MenuBar:
         test_menu.add_command(
             label="Run Tests",
             command=lambda: TestDialog(self.root, self.gui).show()
-        )
-
-    def _create_TimeDomain_menu(self, menubar):
-        TimeDomainMenu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="Time_Domain", menu=TimeDomainMenu)
-
-        TimeDomainMenu.add_command(
-            label="Time Domain",
-            command=lambda: create_TimeDomain(self.root)
         )
 
     def _create_frequency_domain_menu(self, menubar):
