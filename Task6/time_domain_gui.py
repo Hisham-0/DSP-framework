@@ -685,7 +685,7 @@ class TimeDomainGUI:
             # Create new signal
             new_signal = {
                 'name': f"Folded_{signal['name']}",
-                'indices': signal['indices'][::-1],
+                'indices': signal['indices'],
                 'samples': y
             }
 
@@ -732,7 +732,7 @@ class TimeDomainGUI:
             direction = "Delay" if k > 0 else "Advance"
             new_signal = {
                 'name': f"Folded_{direction}_{abs(k)}_samples_{signal['name']}",
-                'indices': signal['indices'],
+                'indices': signal['indices'] + k,
                 'samples': y
             }
 

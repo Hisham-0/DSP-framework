@@ -70,18 +70,14 @@ class TimeDomainOperations:
             First derivative
         """
         N = len(x)
-        if N == 0:
+        if N <= 1:
             return np.array([])
 
         y = np.zeros(N)
+        y[0] = x[0] - 0  # Or use forward difference at boundaries
 
-        # Handle first sample (assume x[-1] = 0)
-        y[0] = x[0]
-
-        # Manual derivative for remaining samples
         for i in range(1, N):
             y[i] = x[i] - x[i - 1]
-
         return y
 
     @staticmethod
@@ -100,18 +96,15 @@ class TimeDomainOperations:
             Second derivative
         """
         N = len(x)
-        if N == 0:
+        if N < 3:
             return np.array([])
 
         y = np.zeros(N)
-
-        # Handle boundaries with zero padding
-        padded = np.zeros(N + 2)
-        padded[1:-1] = x
-
-        # Manual second derivative
-        for i in range(N):
-            y[i] = padded[i + 2] - 2 * padded[i + 1] + padded[i]
+        # Handle boundaries separately
+        y[0] = x[1] - 2 * x[0] + 0  # Assuming x[-1] = 0
+        for i in range(1, N - 1):
+            y[i] = x[i + 1] - 2 * x[i] + x[i - 1]
+        y[N - 1] = 0 - 2 * x[N - 1] + x[N - 2]  # Assuming x[N] = 0
 
         return y
 
@@ -218,7 +211,7 @@ class TimeDomainOperations:
         return y
 
     @staticmethod
-    def convolve_signals(x, h):
+    def convolve_signals(x, x_indices, h, h_indices):
         """
         Manual convolution without np.convolve
 
@@ -238,10 +231,14 @@ class TimeDomainOperations:
         M = len(h)
 
         if N == 0 or M == 0:
-            return np.array([])
+            return np.array([]), np.array([])
 
         L = N + M - 1
         y = np.zeros(L)
+
+        # Calculate output indices
+        start_idx = x_indices[0] + h_indices[0]
+        output_indices = np.arange(start_idx, start_idx + L)
 
         # Manual convolution
         for n in range(L):
@@ -251,7 +248,7 @@ class TimeDomainOperations:
                     sum_val += x[k] * h[n - k]
             y[n] = sum_val
 
-        return y
+        return output_indices, y  # Return indices too
 
     @staticmethod
     def normalized_cross_correlation(x, y):
@@ -320,12 +317,14 @@ class TimeDomainOperations:
         for i in range(M):
             y_sq_sum += y_centered[i] ** 2
 
-        norm_factor = (1 / N) * math.sqrt(x_sq_sum * y_sq_sum)
+        norm_factor = math.sqrt(x_sq_sum * y_sq_sum)
 
         if norm_factor != 0:
             corr = corr / norm_factor
 
-        return corr
+        lags = np.arange(-(M - 1), N)
+
+        return lags, corr
 
     @staticmethod
     def normalized_autocorrelation(x):
@@ -367,40 +366,16 @@ class TimeDomainOperations:
         if lx == 0 or ly == 0:
             return np.array([])
 
-        # Find least common multiple
-        def lcm(a, b):
-            if a == 0 or b == 0:
-                return 0
-            return abs(a * b) // math.gcd(a, b)
-
-        L = lcm(lx, ly)
-
-        # Tile signals to length L
-        X = np.zeros(L)
-        Y = np.zeros(L)
-
-        for i in range(L):
-            X[i] = x[i % lx]
-            Y[i] = y[i % ly]
+        # Use the longer length for periodicity
+        L = max(lx, ly)
 
         # Calculate means
-        X_sum = 0.0
-        Y_sum = 0.0
-
-        for i in range(L):
-            X_sum += X[i]
-            Y_sum += Y[i]
-
-        X_mean = X_sum / L
-        Y_mean = Y_sum / L
+        x_mean = sum(x) / lx
+        y_mean = sum(y) / ly
 
         # Center signals
-        X_centered = np.zeros(L)
-        Y_centered = np.zeros(L)
-
-        for i in range(L):
-            X_centered[i] = X[i] - X_mean
-            Y_centered[i] = Y[i] - Y_mean
+        x_centered = x - x_mean
+        y_centered = y - y_mean
 
         # Manual circular correlation
         corr = np.zeros(L)
@@ -408,19 +383,14 @@ class TimeDomainOperations:
         for lag in range(L):
             sum_val = 0.0
             for n in range(L):
-                sum_val += X_centered[n] * Y_centered[(n + lag) % L]
+                sum_val += x_centered[n % lx] * y_centered[(n + lag) % ly]
             corr[lag] = sum_val / L
 
-        # Calculate normalization factor
-        X_sq_sum = 0.0
-        Y_sq_sum = 0.0
+        # Normalization
+        x_sq_sum = sum(xi ** 2 for xi in x_centered)
+        y_sq_sum = sum(yi ** 2 for yi in y_centered)
 
-        for i in range(L):
-            X_sq_sum += X_centered[i] ** 2
-            Y_sq_sum += Y_centered[i] ** 2
-
-        norm_factor = (1 / L) * math.sqrt(X_sq_sum * Y_sq_sum)
-
+        norm_factor = math.sqrt(x_sq_sum * y_sq_sum)
         if norm_factor != 0:
             corr = corr / norm_factor
 
@@ -460,10 +430,9 @@ class TimeDomainOperations:
                 peak_idx = i
 
         # Convert to signed lag
-        if peak_idx > L // 2:
-            signed_lag = peak_idx - L
-        else:
-            signed_lag = peak_idx
+        lags = np.arange(-L // 2, L // 2 + 1) if L % 2 == 0 else np.arange(-(L - 1) // 2, (L - 1) // 2 + 1)
+        peak_idx = np.argmax(corr)
+        signed_lag = lags[peak_idx]
 
         time_delay = signed_lag * ts
 
