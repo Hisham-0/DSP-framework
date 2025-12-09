@@ -13,7 +13,7 @@ import numpy as np
 from GUI.dft_window import DFTWindow
 from GUI.left_panel import LeftPanel
 from GUI.plot_area import PlotArea
-from GUI.TimeDomain import attach_time_domain_menu
+# from Task6.TimeDomain import attach_time_domain_menu
 
 # Import business logic from Data folder
 try:
@@ -57,7 +57,7 @@ class MenuBar:
         self._create_display_menu(menubar)
 
         # Time Domain menu
-        attach_time_domain_menu(self.root, menubar)
+        # attach_time_domain_menu(self.root, menubar)
 
         # Test menu
         self._create_test_menu(menubar)
@@ -1371,8 +1371,8 @@ class TestDialog:
             elif test_type == "sinusoidal":
                 # For sinusoidal test, we test an existing signal (should be a generated sine/cosine)
                 print(f"Running Sinusoidal Test on signal: {signal['name']}")
-                SinCosSignalSamplesAreEqual(
-                    self.wave_type_var.get(),
+                SignalSamplesAreEqual(
+                    "Task 6",
                     expected_file,
                     signal["indices"],
                     signal["samples"]
