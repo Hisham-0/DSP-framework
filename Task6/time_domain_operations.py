@@ -211,7 +211,7 @@ class TimeDomainOperations:
         return y
 
     @staticmethod
-    def convolve_signals(x, x_indices, h, h_indices):
+    def convolve_signals(x, h):
         """
         Manual convolution without np.convolve
 
@@ -231,14 +231,10 @@ class TimeDomainOperations:
         M = len(h)
 
         if N == 0 or M == 0:
-            return np.array([]), np.array([])
+            return np.array([])
 
         L = N + M - 1
         y = np.zeros(L)
-
-        # Calculate output indices
-        start_idx = x_indices[0] + h_indices[0]
-        output_indices = np.arange(start_idx, start_idx + L)
 
         # Manual convolution
         for n in range(L):
@@ -248,82 +244,54 @@ class TimeDomainOperations:
                     sum_val += x[k] * h[n - k]
             y[n] = sum_val
 
-        return output_indices, y  # Return indices too
+        return y
 
     @staticmethod
     def normalized_cross_correlation(x, y):
         """
         Manual normalized cross-correlation
-
-        Parameters:
-        -----------
-        x : numpy array
-            First signal
-        y : numpy array
-            Second signal
-
-        Returns:
-        --------
-        numpy array
-            Normalized cross-correlation
+        Returns: (lags, correlation_values)
         """
         N = len(x)
         M = len(y)
 
         if N == 0 or M == 0:
-            return np.array([])
+            return np.array([]), np.array([])
 
         L = N + M - 1
         corr = np.zeros(L)
 
-        # Calculate means manually
-        x_sum = 0.0
-        y_sum = 0.0
-
-        for i in range(N):
-            x_sum += x[i]
-        for i in range(M):
-            y_sum += y[i]
-
-        x_mean = x_sum / N
-        y_mean = y_sum / M
+        # Calculate means
+        x_mean = np.sum(x) / N
+        y_mean = np.sum(y) / M
 
         # Center signals
-        x_centered = np.zeros(N)
-        y_centered = np.zeros(M)
+        x_centered = x - x_mean
+        y_centered = y - y_mean
 
-        for i in range(N):
-            x_centered[i] = x[i] - x_mean
-        for i in range(M):
-            y_centered[i] = y[i] - y_mean
+        # Calculate normalization factors
+        x_norm = np.sqrt(np.sum(x_centered ** 2))
+        y_norm = np.sqrt(np.sum(y_centered ** 2))
 
-        # Calculate correlation for each lag
+        norm_factor = x_norm * y_norm
+
+        if norm_factor == 0:
+            lags = np.arange(-(M - 1), N)
+            return lags, np.zeros(L)
+
+        # Calculate cross-correlation for each lag
         for lag in range(-(M - 1), N):
             idx = lag + (M - 1)  # Map to 0-based index
             sum_val = 0.0
 
             for n in range(N):
-                if 0 <= n + lag < M:
-                    sum_val += x_centered[n] * y_centered[n + lag]
+                k = n - lag
+                if 0 <= k < M:
+                    sum_val += x_centered[n] * y_centered[k]
 
-            corr[idx] = sum_val / N
-
-        # Calculate normalization factor
-        x_sq_sum = 0.0
-        y_sq_sum = 0.0
-
-        for i in range(N):
-            x_sq_sum += x_centered[i] ** 2
-        for i in range(M):
-            y_sq_sum += y_centered[i] ** 2
-
-        norm_factor = math.sqrt(x_sq_sum * y_sq_sum)
-
-        if norm_factor != 0:
-            corr = corr / norm_factor
+            corr[idx] = sum_val / norm_factor
 
         lags = np.arange(-(M - 1), N)
-
         return lags, corr
 
     @staticmethod
@@ -341,7 +309,8 @@ class TimeDomainOperations:
         numpy array
             Normalized autocorrelation
         """
-        return TimeDomainOperations.normalized_cross_correlation(x, x)
+        lags, corr = TimeDomainOperations.normalized_cross_correlation(x, x)
+        return lags, corr
 
     @staticmethod
     def circular_cross_correlation_periodic(x, y):
@@ -360,22 +329,37 @@ class TimeDomainOperations:
         numpy array
             Circular cross-correlation
         """
-        lx = len(x)
-        ly = len(y)
+        N = len(x)
+        M = len(y)
 
-        if lx == 0 or ly == 0:
+        if N == 0 or M == 0:
             return np.array([])
 
-        # Use the longer length for periodicity
-        L = max(lx, ly)
+        # Use the maximum length for periodicity
+        L = max(N, M)
+
+        # Pad signals to length L by repeating
+        x_padded = np.zeros(L)
+        y_padded = np.zeros(L)
+
+        for i in range(L):
+            x_padded[i] = x[i % N]
+            y_padded[i] = y[i % M]
 
         # Calculate means
-        x_mean = sum(x) / lx
-        y_mean = sum(y) / ly
+        x_mean = np.mean(x_padded)
+        y_mean = np.mean(y_padded)
 
         # Center signals
-        x_centered = x - x_mean
-        y_centered = y - y_mean
+        x_centered = x_padded - x_mean
+        y_centered = y_padded - y_mean
+
+        # Calculate normalization factors
+        x_norm = np.sqrt(np.sum(x_centered ** 2))
+        y_norm = np.sqrt(np.sum(y_centered ** 2))
+
+        if x_norm == 0 or y_norm == 0:
+            return np.zeros(L)
 
         # Manual circular correlation
         corr = np.zeros(L)
@@ -383,16 +367,8 @@ class TimeDomainOperations:
         for lag in range(L):
             sum_val = 0.0
             for n in range(L):
-                sum_val += x_centered[n % lx] * y_centered[(n + lag) % ly]
-            corr[lag] = sum_val / L
-
-        # Normalization
-        x_sq_sum = sum(xi ** 2 for xi in x_centered)
-        y_sq_sum = sum(yi ** 2 for yi in y_centered)
-
-        norm_factor = math.sqrt(x_sq_sum * y_sq_sum)
-        if norm_factor != 0:
-            corr = corr / norm_factor
+                sum_val += x_centered[n] * y_centered[(n + lag) % L]
+            corr[lag] = sum_val / (x_norm * y_norm)
 
         return corr
 
@@ -420,7 +396,7 @@ class TimeDomainOperations:
         if L == 0:
             return 0, 0.0, corr
 
-        # Manual peak finding
+        # Find peak correlation index
         peak_idx = 0
         peak_val = corr[0]
 
@@ -429,10 +405,11 @@ class TimeDomainOperations:
                 peak_val = corr[i]
                 peak_idx = i
 
-        # Convert to signed lag
-        lags = np.arange(-L // 2, L // 2 + 1) if L % 2 == 0 else np.arange(-(L - 1) // 2, (L - 1) // 2 + 1)
-        peak_idx = np.argmax(corr)
-        signed_lag = lags[peak_idx]
+        # Convert to signed lag (considering circular nature)
+        if peak_idx > L // 2:
+            signed_lag = peak_idx - L
+        else:
+            signed_lag = peak_idx
 
         time_delay = signed_lag * ts
 

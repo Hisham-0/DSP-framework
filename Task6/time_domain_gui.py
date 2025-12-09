@@ -75,6 +75,13 @@ class TimeDomainGUI:
                              command=self.periodic_correlation_dialog)
         ops_menu.add_command(label="10. Time Delay Analysis (Periodic)",
                              command=self.time_delay_dialog)
+        # Test menu
+        test_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Tests", menu=test_menu)
+        test_menu.add_command(label="Run All Tests", command=self.run_tests)
+        test_menu.add_command(label="Test Derivatives", command=self.test_derivatives)
+        test_menu.add_command(label="Test Convolution", command=self.test_convolution)
+        test_menu.add_command(label="Test Smoothing", command=self.test_smoothing)
 
         # Help menu
         help_menu = tk.Menu(menubar, tearoff=0)
@@ -801,10 +808,19 @@ class TimeDomainGUI:
         (idx1, signal1), (idx2, signal2) = signals
 
         try:
+            # Call the convolution function (now only 2 parameters)
             y = TimeDomainOperations.convolve_signals(signal1['samples'], signal2['samples'])
 
+            # Create indices for the output signal
+            # Convolution length = N + M - 1
+            N = len(signal1['samples'])
+            M = len(signal2['samples'])
+
+            # Generate indices starting from the sum of the starting indices of both signals
+            start_idx = signal1['indices'][0] + signal2['indices'][0]
+            indices = np.arange(start_idx, start_idx + len(y))
+
             # Create new signal
-            indices = np.arange(len(y))
             new_signal = {
                 'name': f"Convolution_{signal1['name']}_{signal2['name']}",
                 'indices': indices,
@@ -822,7 +838,7 @@ class TimeDomainGUI:
             # Update plot
             self.update_plot()
 
-            messagebox.showinfo("Success", "Applied convolution operation")
+            messagebox.showinfo("Success", f"Applied convolution operation\nResult length: {len(y)}")
 
         except Exception as e:
             messagebox.showerror("Error", f"Convolution failed: {str(e)}")
@@ -1005,6 +1021,90 @@ Instructions:
 Note: All operations use manual implementations without built-in numpy functions."""
 
         messagebox.showinfo("Help - Time Domain Operations", help_text)
+
+#######
+#-test-
+#######
+    def run_tests(self):
+        """Run all test cases"""
+        import subprocess
+        import sys
+
+        try:
+            # Run the test module
+            result = subprocess.run([sys.executable, "test_module.py"],
+                                    capture_output=True, text=True)
+
+            # Show results in a message box
+            messagebox.showinfo("Test Results", result.stdout)
+
+            if result.stderr:
+                messagebox.showerror("Test Errors", result.stderr)
+
+        except Exception as e:
+            messagebox.showerror("Test Error", f"Failed to run tests: {str(e)}")
+
+    def test_derivatives(self):
+        """Test derivative operations"""
+        from test_module import DerivativeSignal
+
+        try:
+            DerivativeSignal()
+            messagebox.showinfo("Derivative Test", "Derivative test completed. Check console for results.")
+        except Exception as e:
+            messagebox.showerror("Test Error", f"Derivative test failed: {str(e)}")
+
+    def test_convolution(self):
+        """Test convolution operation"""
+        from test_module import ConvTest
+        from time_domain_operations import TimeDomainOperations
+
+        try:
+            # Example signals from ConvTest.py
+            InputIndicesSignal1 = np.array([-2, -1, 0, 1])
+            InputSamplesSignal1 = np.array([1, 2, 1, 1])
+
+            InputIndicesSignal2 = np.array([0, 1, 2, 3, 4, 5])
+            InputSamplesSignal2 = np.array([1, -1, 0, 0, 1, 1])
+
+            # Calculate convolution
+            y = TimeDomainOperations.convolve_signals(InputSamplesSignal1, InputSamplesSignal2)
+
+            # Generate indices
+            start_idx = InputIndicesSignal1[0] + InputIndicesSignal2[0]
+            Your_indices = np.arange(start_idx, start_idx + len(y))
+
+            # Run test
+            success = ConvTest(Your_indices, y)
+
+            if success:
+                messagebox.showinfo("Convolution Test", "Convolution test passed!")
+            else:
+                messagebox.showwarning("Convolution Test", "Convolution test failed. Check console.")
+
+        except Exception as e:
+            messagebox.showerror("Test Error", f"Convolution test failed: {str(e)}")
+
+    def test_smoothing(self):
+        """Test smoothing operation"""
+        from test_module import load_signal_from_file, Compare_Signals
+        from time_domain_operations import TimeDomainOperations
+
+        try:
+            # Test with Signal1.txt if exists
+            if os.path.exists("Signal1.txt"):
+                indices1, samples1 = load_signal_from_file("Signal1.txt")
+                if indices1 is not None:
+                    smoothed = TimeDomainOperations.smoothing_moving_average(samples1, 3)
+                    success = Compare_Signals("MovAvgTest1.txt", indices1[:len(smoothed)], smoothed)
+
+                    if success:
+                        messagebox.showinfo("Smoothing Test", "Smoothing test 1 passed!")
+                    else:
+                        messagebox.showwarning("Smoothing Test", "Smoothing test 1 failed.")
+
+        except Exception as e:
+            messagebox.showerror("Test Error", f"Smoothing test failed: {str(e)}")
 
 
 def main():
