@@ -864,8 +864,8 @@ class TimeDomainGUI:
                     return
 
                 idx, signal = signal_info
-                corr = TimeDomainOperations.normalized_autocorrelation(signal['samples'])
-                indices = np.arange(-(len(signal['samples']) - 1), len(signal['samples']))
+                lags, corr = TimeDomainOperations.normalized_autocorrelation(signal['samples'])
+                indices = lags  # Use lags as indices
                 name = f"AutoCorrelation_{signal['name']}"
 
             else:  # cross-correlation
@@ -875,8 +875,10 @@ class TimeDomainGUI:
                     return
 
                 (idx1, signal1), (idx2, signal2) = signals
-                corr = TimeDomainOperations.normalized_cross_correlation(signal1['samples'], signal2['samples'])
-                indices = np.arange(-(len(signal2['samples']) - 1), len(signal1['samples']))
+                lags, corr = TimeDomainOperations.normalized_cross_correlation(
+                    signal1['samples'], signal2['samples']
+                )
+                indices = lags  # Use lags as indices
                 name = f"CrossCorrelation_{signal1['name']}_{signal2['name']}"
 
             # Create new signal

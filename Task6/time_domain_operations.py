@@ -13,18 +13,7 @@ class TimeDomainOperations:
     def smoothing_moving_average(x, window):
         """
         Manual moving average smoothing
-
-        Parameters:
-        -----------
-        x : numpy array
-            Input signal samples
-        window : int
-            Window size (odd number recommended)
-
-        Returns:
-        --------
-        numpy array
-            Smoothed signal
+        Returns only N-window+1 samples (matching test files)
         """
         N = len(x)
         if N == 0:
@@ -33,24 +22,16 @@ class TimeDomainOperations:
         if window <= 0 or window > N:
             raise ValueError("Invalid window size")
 
-        # Initialize result array
-        y = np.zeros(N)
-        half_window = window // 2
+        # For test files, output has N-window+1 samples
+        L = N - window + 1
+        y = np.zeros(L)
 
-        # Manual moving average
-        for i in range(N):
-            # Calculate boundaries for window
-            start = max(0, i - half_window)
-            end = min(N, i + half_window + 1)
-
-            # Manual sum
+        # Manual moving average - only compute where full window fits
+        for i in range(L):
             window_sum = 0.0
-            count = 0
-            for j in range(start, end):
-                window_sum += x[j]
-                count += 1
-
-            y[i] = window_sum / count if count > 0 else x[i]
+            for j in range(window):
+                window_sum += x[i + j]
+            y[i] = window_sum / window
 
         return y
 
@@ -249,50 +230,52 @@ class TimeDomainOperations:
     @staticmethod
     def normalized_cross_correlation(x, y):
         """
-        Manual normalized cross-correlation
-        Returns: (lags, correlation_values)
+        Compute normalized cross-correlation between signals x and y.
+        Returns lags (from 0 to L-1 where L = N+M-1) and normalized correlation values.
         """
         N = len(x)
         M = len(y)
-
-        if N == 0 or M == 0:
-            return np.array([]), np.array([])
-
         L = N + M - 1
+
+        # Pad signals to length L
+        x_padded = np.zeros(L)
+        y_padded = np.zeros(L)
+
+        for i in range(N):
+            x_padded[i] = x[i]
+        for i in range(M):
+            y_padded[i] = y[i]
+
+        # Compute correlation for each lag (0 to L-1)
         corr = np.zeros(L)
+        for lag in range(L):
+            s = 0.0
+            for n in range(L):
+                # Circular correlation of padded signals
+                s += x_padded[n] * y_padded[(n + lag) % L]
+            corr[lag] = s / L
 
-        # Calculate means
-        x_mean = np.sum(x) / N
-        y_mean = np.sum(y) / M
+        # Compute energies of original signals (not padded)
+        x_energy = 0.0
+        for i in range(N):
+            x_energy += x[i] * x[i]
 
-        # Center signals
-        x_centered = x - x_mean
-        y_centered = y - y_mean
+        y_energy = 0.0
+        for i in range(M):
+            y_energy += y[i] * y[i]
 
-        # Calculate normalization factors
-        x_norm = np.sqrt(np.sum(x_centered ** 2))
-        y_norm = np.sqrt(np.sum(y_centered ** 2))
-
-        norm_factor = x_norm * y_norm
-
+        # Normalization factor
+        norm_factor = math.sqrt(x_energy * y_energy) / L
         if norm_factor == 0:
-            lags = np.arange(-(M - 1), N)
-            return lags, np.zeros(L)
+            norm_factor = 1.0
 
-        # Calculate cross-correlation for each lag
-        for lag in range(-(M - 1), N):
-            idx = lag + (M - 1)  # Map to 0-based index
-            sum_val = 0.0
+        # Normalized correlation
+        normalized = np.zeros(L)
+        for i in range(L):
+            normalized[i] = corr[i] / norm_factor
 
-            for n in range(N):
-                k = n - lag
-                if 0 <= k < M:
-                    sum_val += x_centered[n] * y_centered[k]
-
-            corr[idx] = sum_val / norm_factor
-
-        lags = np.arange(-(M - 1), N)
-        return lags, corr
+        lags = np.arange(L)
+        return lags, normalized
 
     @staticmethod
     def normalized_autocorrelation(x):

@@ -46,9 +46,10 @@ def DerivativeSignal():
     else:
         print("Derivative Test case failed")
 
-def Compare_Signals(file_name,Your_indices,Your_samples):
-    expected_indices=[]
-    expected_samples=[]
+
+def Compare_Signals(file_name, Your_indices, Your_samples):
+    expected_indices = []
+    expected_samples = []
     with open(file_name, 'r') as f:
         line = f.readline()
         line = f.readline()
@@ -56,11 +57,11 @@ def Compare_Signals(file_name,Your_indices,Your_samples):
         line = f.readline()
         while line:
             # process line
-            L=line.strip()
-            if len(L.split(' '))==2:
-                L=line.split(' ')
-                V1=int(L[0])
-                V2=float(L[1])
+            L = line.strip()
+            if len(L.split(' ')) == 2:
+                L = line.split(' ')
+                V1 = int(L[0])
+                V2 = float(L[1])
                 expected_indices.append(V1)
                 expected_samples.append(V2)
                 line = f.readline()
@@ -69,11 +70,11 @@ def Compare_Signals(file_name,Your_indices,Your_samples):
     print("Current Output Test file is: ")
     print(file_name)
     print("\n")
-    if (len(expected_samples)!=len(Your_samples)) and (len(expected_indices)!=len(Your_indices)):
+    if (len(expected_samples) != len(Your_samples)) and (len(expected_indices) != len(Your_indices)):
         print("Shift_Fold_Signal Test case failed, your signal have different length from the expected one")
         return
     for i in range(len(Your_indices)):
-        if(Your_indices[i]!=expected_indices[i]):
+        if (Your_indices[i] != expected_indices[i]):
             print("Shift_Fold_Signal Test case failed, your signal have different indicies from the expected one")
             return
     for i in range(len(expected_samples)):
@@ -83,6 +84,48 @@ def Compare_Signals(file_name,Your_indices,Your_samples):
             print("Correlation Test case failed, your signal have different values from the expected one")
             return
     print("Correlation Test case passed successfully")
+
+
+def SignalsAreEqual(TaskName, given_output_filePath, Your_indices, Your_samples):
+    expected_indices = []
+    expected_samples = []
+    with open(given_output_filePath, 'r') as f:
+        line = f.readline()
+        line = f.readline()
+        line = f.readline()
+        line = f.readline()
+        while line:
+            # process line
+            L = line.strip()
+            if len(L.split(' ')) == 2:
+                L = line.split(' ')
+                V1 = int(L[0])
+                V2 = float(L[1])
+                expected_indices.append(V1)
+                expected_samples.append(V2)
+                line = f.readline()
+            else:
+                break
+
+    # FIXED: The return statement was at wrong indentation level
+    if (len(expected_samples) != len(Your_samples)) or (len(expected_indices) != len(Your_indices)):
+        print(TaskName + " Test case failed, your signal have different length from the expected one")
+        return  # <-- Now properly inside the if block
+
+    for i in range(len(Your_indices)):
+        if (Your_indices[i] != expected_indices[i]):
+            print(TaskName + " Test case failed, your signal have different indicies from the expected one")
+            return
+
+    for i in range(len(expected_samples)):
+        if abs(Your_samples[i] - expected_samples[i]) < 0.01:
+            continue
+        else:
+            print(TaskName + " Test case failed, your signal have different values from the expected one")
+            return
+
+    print(TaskName + " Test case passed successfully")
+
 
 def ConvTest(Your_indices, Your_samples):
     """
@@ -113,9 +156,28 @@ def ConvTest(Your_indices, Your_samples):
     print("Conv Test case passed successfully")
 
 
-
-
 # ==================================================================
+
+def test_dc_removal():
+    """Test DC component removal using provided function"""
+    from time_domain_operations import TimeDomainOperations
+
+    print("\n5.Testing DC Component Removal...")
+
+    # Load input signal
+    input_path = "cases/DC_component_input.txt"
+    if os.path.exists(input_path):
+        indices, samples = load_signal_from_file(input_path)
+        if indices is not None:
+            # Apply DC removal
+            dc_removed = TimeDomainOperations.remove_dc(samples)
+
+            # Import and use the provided function
+            SignalsAreEqual("DC Removal", "cases/DC_component_output.txt", indices, dc_removed)
+    else:
+        print(f"  File not found: {input_path}")
+
+
 def Shift_Fold_Signal(file_name, Your_indices, Your_samples):
     """Test shift and fold operations"""
     return Compare_Signals(file_name, Your_indices, Your_samples)
@@ -157,11 +219,11 @@ def run_all_tests():
     print("=" * 60)
 
     # Test 1: Derivatives
-    print("\n1. Testing Derivatives...")
+    print("\n1.Testing Derivatives...")
     DerivativeSignal()
 
     # Test 2: Convolution (using hardcoded example)
-    print("\n2. Testing Convolution...")
+    print("\n2.Testing Convolution...")
     from time_domain_operations import TimeDomainOperations
 
     # Example from ConvTest.py
@@ -181,10 +243,10 @@ def run_all_tests():
     ConvTest(Your_indices, y)
 
     # Test 3: Moving Average (Smoothing)
-    print("\n3. Testing Moving Average...")
+    print("\n3.Testing Moving Average...")
 
     # Test 1: Signal1.txt with window size 3
-    print("\n  Test 1: Signal1.txt with window size 3")
+    print("\n**Test 1: Signal1.txt with window size 3")
     signal1_path = "cases/Signal1.txt"
     if os.path.exists(signal1_path):
         indices1, samples1 = load_signal_from_file(signal1_path)
@@ -195,7 +257,7 @@ def run_all_tests():
         print(f"  File not found: {signal1_path}")
 
     # Test 2: Signal2.txt with window size 5
-    print("\n  Test 2: Signal2.txt with window size 5")
+    print("\n**Test 2: Signal2.txt with window size 5")
     signal2_path = "cases/Signal2.txt"
     if os.path.exists(signal2_path):
         indices2, samples2 = load_signal_from_file(signal2_path)
@@ -205,13 +267,15 @@ def run_all_tests():
     else:
         print(f"  File not found: {signal2_path}")
 
+    # ==================================
+    # ==================================
     # Test 4: Correlation Tests
-    print("\n4. Testing Correlation...")
+    print("\n4.Testing Correlation...")
 
     # Test correlation for different length signals
-    print("\n...Testing correlation for different length signals...")
-    signal1_path = "cases/Corr_input diff-signal1.txt"
-    signal2_path = "cases/Corr_input diff-signal2.txt"
+    print("\n**Testing correlation for different length signals...")
+    signal1_path = "cases/Corr_input_diff_signal1.txt"
+    signal2_path = "cases/Corr_input_diff_signal2.txt"
 
     if os.path.exists(signal1_path) and os.path.exists(signal2_path):
         indices_c1, samples_c1 = load_signal_from_file(signal1_path)
@@ -219,17 +283,16 @@ def run_all_tests():
 
         if indices_c1 is not None and indices_c2 is not None:
             lags, corr = TimeDomainOperations.normalized_cross_correlation(samples_c1, samples_c2)
-            Your_indices = lags
-            Compare_Signals("cases/CorrDiffOutput.txt", Your_indices, corr)
+            # Test file uses indices starting at 0, not actual lag values
+            Compare_Signals("cases/CorrDiffOutput.txt", np.arange(len(corr)), corr)
     else:
-        print(f"  Correlation test files not found:")
-        print(f"    Looking for: {signal1_path}")
-        print(f"    Looking for: {signal2_path}")
+        print("🚨🚨Correlation test files not found")
 
+    # ++++++++++++++++++++++++++++++++++++++
     # Additional correlation tests (point 1)
-    print("\n...Testing correlation for same length signals")
-    signal1b_path = "cases/Corr_input signal1.txt"
-    signal2b_path = "cases/Corr_input signal2.txt"
+    print("\n**Testing correlation for same length signals...")
+    signal1b_path = "cases/Corr_input_signal1.txt"
+    signal2b_path = "cases/Corr_input_signal2.txt"
 
     if os.path.exists(signal1b_path) and os.path.exists(signal2b_path):
         indices_c1b, samples_c1b = load_signal_from_file(signal1b_path)
@@ -237,10 +300,17 @@ def run_all_tests():
 
         if indices_c1b is not None and indices_c2b is not None:
             lags, corr = TimeDomainOperations.normalized_cross_correlation(samples_c1b, samples_c2b)
-            Your_indices = lags
-            Compare_Signals("cases/CorrOutput.txt", Your_indices, corr)
+            # Test file uses indices starting at 0
+
+            print(np.arange(len(corr)))
+            print(corr)
+
+            Compare_Signals("cases/CorrOutput.txt", np.arange(len(corr)), corr)
     else:
-        print(f"  Point 1 correlation test files not found")
+        print("🚨🚨Point 1 correlation test files not found")
+
+    # Test 5: DC Removal (NEW)
+    test_dc_removal()
 
     print("\n" + "=" * 60)
     print("All tests completed!")
