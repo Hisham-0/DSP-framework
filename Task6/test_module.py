@@ -282,7 +282,7 @@ def run_all_tests():
         indices_c2, samples_c2 = load_signal_from_file(signal2_path)
 
         if indices_c1 is not None and indices_c2 is not None:
-            lags, corr = TimeDomainOperations.normalized_cross_correlation(samples_c1, samples_c2)
+            corr = TimeDomainOperations.normalized_cross_correlation(samples_c1, samples_c2)
             # Test file uses indices starting at 0, not actual lag values
             Compare_Signals("cases/CorrDiffOutput.txt", np.arange(len(corr)), corr)
     else:
@@ -299,12 +299,11 @@ def run_all_tests():
         indices_c2b, samples_c2b = load_signal_from_file(signal2b_path)
 
         if indices_c1b is not None and indices_c2b is not None:
-            lags, corr = TimeDomainOperations.normalized_cross_correlation(samples_c1b, samples_c2b)
+            corr = TimeDomainOperations.normalized_cross_correlation(samples_c1b, samples_c2b)
             # Test file uses indices starting at 0
 
-            print(np.arange(len(corr)))
-            print(corr)
-
+            # print(np.arange(len(corr)))
+            # print(corr)
             Compare_Signals("cases/CorrOutput.txt", np.arange(len(corr)), corr)
     else:
         print("🚨🚨Point 1 correlation test files not found")

@@ -235,7 +235,11 @@ class TimeDomainOperations:
         """
         N = len(x)
         M = len(y)
-        L = N + M - 1
+
+        if N != M:
+            L = N + M - 1
+        else:
+            L = M
 
         # Pad signals to length L
         x_padded = np.zeros(L)
@@ -275,7 +279,7 @@ class TimeDomainOperations:
             normalized[i] = corr[i] / norm_factor
 
         lags = np.arange(L)
-        return lags, normalized
+        return normalized
 
     @staticmethod
     def normalized_autocorrelation(x):
