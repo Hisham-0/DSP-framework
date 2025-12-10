@@ -279,7 +279,7 @@ class TimeDomainOperations:
             normalized[i] = corr[i] / norm_factor
 
         lags = np.arange(L)
-        return normalized
+        return lags, normalized
 
     @staticmethod
     def normalized_autocorrelation(x):

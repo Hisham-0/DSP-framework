@@ -218,10 +218,12 @@ def run_all_tests():
     print("Running Time Domain Operations Tests")
     print("=" * 60)
 
+    # ==================================
     # Test 1: Derivatives
     print("\n1.Testing Derivatives...")
     DerivativeSignal()
 
+    # ==================================
     # Test 2: Convolution (using hardcoded example)
     print("\n2.Testing Convolution...")
     from time_domain_operations import TimeDomainOperations
@@ -242,10 +244,11 @@ def run_all_tests():
 
     ConvTest(Your_indices, y)
 
+    # ==================================
     # Test 3: Moving Average (Smoothing)
     print("\n3.Testing Moving Average...")
 
-    # Test 1: Signal1.txt with window size 3
+    ## Test 1: Signal1.txt with window size 3
     print("\n**Test 1: Signal1.txt with window size 3")
     signal1_path = "cases/Signal1.txt"
     if os.path.exists(signal1_path):
@@ -256,7 +259,7 @@ def run_all_tests():
     else:
         print(f"  File not found: {signal1_path}")
 
-    # Test 2: Signal2.txt with window size 5
+    ## Test 2: Signal2.txt with window size 5
     print("\n**Test 2: Signal2.txt with window size 5")
     signal2_path = "cases/Signal2.txt"
     if os.path.exists(signal2_path):
@@ -268,11 +271,10 @@ def run_all_tests():
         print(f"  File not found: {signal2_path}")
 
     # ==================================
-    # ==================================
     # Test 4: Correlation Tests
     print("\n4.Testing Correlation...")
 
-    # Test correlation for different length signals
+    ## Test correlation for different length signals
     print("\n**Testing correlation for different length signals...")
     signal1_path = "cases/Corr_input_diff_signal1.txt"
     signal2_path = "cases/Corr_input_diff_signal2.txt"
@@ -288,8 +290,7 @@ def run_all_tests():
     else:
         print("🚨🚨Correlation test files not found")
 
-    # ++++++++++++++++++++++++++++++++++++++
-    # Additional correlation tests (point 1)
+    ## Additional correlation tests (point 1)
     print("\n**Testing correlation for same length signals...")
     signal1b_path = "cases/Corr_input_signal1.txt"
     signal2b_path = "cases/Corr_input_signal2.txt"
@@ -308,6 +309,7 @@ def run_all_tests():
     else:
         print("🚨🚨Point 1 correlation test files not found")
 
+    # ==================================
     # Test 5: DC Removal (NEW)
     test_dc_removal()
 
