@@ -165,7 +165,7 @@ def test_dc_removal():
     print("\n5.Testing DC Component Removal...")
 
     # Load input signal
-    input_path = "cases/DC_component_input.txt"
+    input_path = f"D:/University/DSP/Labs/FrameWork/Task6/cases/DC_component_input.txt"
     if os.path.exists(input_path):
         indices, samples = load_signal_from_file(input_path)
         if indices is not None:
@@ -173,7 +173,7 @@ def test_dc_removal():
             dc_removed = TimeDomainOperations.remove_dc(samples)
 
             # Import and use the provided function
-            SignalsAreEqual("DC Removal", "cases/DC_component_output.txt", indices, dc_removed)
+            SignalsAreEqual("DC Removal", f"D:/University/DSP/Labs/FrameWork/Task6/cases/DC_component_output.txt", indices, dc_removed)
     else:
         print(f"  File not found: {input_path}")
 
@@ -250,23 +250,23 @@ def run_all_tests():
 
     ## Test 1: Signal1.txt with window size 3
     print("\n**Test 1: Signal1.txt with window size 3")
-    signal1_path = "cases/Signal1.txt"
+    signal1_path = f"D:/University/DSP/Labs/FrameWork/Task6/cases/Signal1.txt"
     if os.path.exists(signal1_path):
         indices1, samples1 = load_signal_from_file(signal1_path)
         if indices1 is not None:
             smoothed = TimeDomainOperations.smoothing_moving_average(samples1, 3)
-            Compare_Signals("cases/OutMovAvgTest1.txt", indices1[:len(smoothed)], smoothed)
+            Compare_Signals(f"D:/University/DSP/Labs/FrameWork/Task6/cases/OutMovAvgTest1.txt", indices1[:len(smoothed)], smoothed)
     else:
         print(f"  File not found: {signal1_path}")
 
     ## Test 2: Signal2.txt with window size 5
     print("\n**Test 2: Signal2.txt with window size 5")
-    signal2_path = "cases/Signal2.txt"
+    signal2_path = f"D:/University/DSP/Labs/FrameWork/Task6/cases/Signal2.txt"
     if os.path.exists(signal2_path):
         indices2, samples2 = load_signal_from_file(signal2_path)
         if indices2 is not None:
             smoothed = TimeDomainOperations.smoothing_moving_average(samples2, 5)
-            Compare_Signals("cases/OutMovAvgTest2.txt", indices2[:len(smoothed)], smoothed)
+            Compare_Signals(f"D:/University/DSP/Labs/FrameWork/Task6/cases/OutMovAvgTest2.txt", indices2[:len(smoothed)], smoothed)
     else:
         print(f"  File not found: {signal2_path}")
 
@@ -276,8 +276,8 @@ def run_all_tests():
 
     ## Test correlation for different length signals
     print("\n**Testing correlation for different length signals...")
-    signal1_path = "cases/Corr_input_diff_signal1.txt"
-    signal2_path = "cases/Corr_input_diff_signal2.txt"
+    signal1_path = f"D:/University/DSP/Labs/FrameWork/Task6/cases/Corr_input_diff_signal1.txt"
+    signal2_path = f"D:/University/DSP/Labs/FrameWork/Task6/cases/Corr_input_diff_signal2.txt"
 
     if os.path.exists(signal1_path) and os.path.exists(signal2_path):
         indices_c1, samples_c1 = load_signal_from_file(signal1_path)
@@ -286,14 +286,14 @@ def run_all_tests():
         if indices_c1 is not None and indices_c2 is not None:
             corr = TimeDomainOperations.normalized_cross_correlation(samples_c1, samples_c2)
             # Test file uses indices starting at 0, not actual lag values
-            Compare_Signals("cases/CorrDiffOutput.txt", np.arange(len(corr)), corr)
+            Compare_Signals(f"D:/University/DSP/Labs/FrameWork/Task6/cases/CorrDiffOutput.txt", np.arange(len(corr)), corr)
     else:
         print("🚨🚨Correlation test files not found")
 
     ## Additional correlation tests (point 1)
     print("\n**Testing correlation for same length signals...")
-    signal1b_path = "cases/Corr_input_signal1.txt"
-    signal2b_path = "cases/Corr_input_signal2.txt"
+    signal1b_path = r"D:/University/DSP/Labs/FrameWork/Task6/cases/Corr_input_signal1.txt"
+    signal2b_path = f"D:/University/DSP/Labs/FrameWork/Task6/cases/Corr_input_signal2.txt"
 
     if os.path.exists(signal1b_path) and os.path.exists(signal2b_path):
         indices_c1b, samples_c1b = load_signal_from_file(signal1b_path)
@@ -305,7 +305,7 @@ def run_all_tests():
 
             # print(np.arange(len(corr)))
             # print(corr)
-            Compare_Signals("cases/CorrOutput.txt", np.arange(len(corr)), corr)
+            Compare_Signals(f"D:/University/DSP/Labs/FrameWork/Task6/cases/CorrOutput.txt", np.arange(len(corr)), corr)
     else:
         print("🚨🚨Point 1 correlation test files not found")
 

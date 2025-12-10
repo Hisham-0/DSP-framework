@@ -75,6 +75,10 @@ class TimeDomainGUI:
                              command=self.periodic_correlation_dialog)
         ops_menu.add_command(label="10. Time Delay Analysis (Periodic)",
                              command=self.time_delay_dialog)
+        ops_menu.add_command(label="11. FIR Filtering",
+                             command=self.fir_filter_signal_dialog)
+        ops_menu.add_command(label= "12. Resample Siganl",
+                             command= self.resample_signal_dialog)
         # Test menu
         test_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Tests", menu=test_menu)
@@ -995,6 +999,94 @@ class TimeDomainGUI:
 
         except Exception as e:
             messagebox.showerror("Error", f"Time delay analysis failed: {str(e)}")
+
+    def fir_filter_signal_dialog(self):
+        """Show Fir Filter dialog"""
+        from time_domain_operations import TimeDomainOperations
+
+        signal_info = self.get_selected_signal()
+        if not signal_info:
+            messagebox.showwarning("Warning", "Please select a signal")
+            return
+
+        idx, signal = signal_info
+
+        fs_entry = simpledialog.askfloat("Sampling Frequency",
+                                    "Enter Sampling Frequency: ",
+                                    parent=self.root)
+        f1_entry = simpledialog.askfloat("First Cutoff Frequency",
+                                    "Enter First Cutoff Frequency: ",
+                                    parent=self.root)
+        f2_entry = simpledialog.askfloat("Second Cutoff Frequency",
+                                    "Enter Second Cutoff Frequency (If Type is Band): ",
+                                    parent=self.root)
+        ds_entry = simpledialog.askfloat("Stopband Attenuation",
+                                    "Enter Stopband Attenuation: ",
+                                    parent=self.root)
+        tb_entry = simpledialog.askfloat("Transition Band",
+                                    "Enter Transition Band: ",
+                                    parent=self.root)
+        filter_type = simpledialog.askinteger("Filter Type",
+                                    "Enter 1 For Low\n      2 For High\n      3 For Bandpass\n      4 For Bandstop(Default): ",
+                                    parent=self.root)
+
+        try:
+            x = signal['samples']
+            fs = float(fs_entry)
+            f1 = float(f1_entry)
+            f2 = float(f2_entry) if f2_entry else None
+            delta_s = float(ds_entry)
+            tb = float(tb_entry)
+            ftype = filter_type
+            h, y = TimeDomainOperations.fir_filter(x, ftype, fs, delta_s, tb, f1, f2)
+
+            Ts = signal['indices'][1] - signal['indices'][0]
+            y_time = signal['indices'][0] + np.arange(len(y)) * Ts
+
+            # Create new signal
+            new_signal = {
+                'name': f"Filtered_{signal['name']}",
+                'indices': y_time,
+                'samples': y
+            }
+            # new_signal2 = {
+            #     'name': f"Filtered_{signal['name']}_Coffs.",
+            #     'indices': signal['indices'],
+            #     'samples': h
+            # }
+
+            # Add to signals list
+            self.signals.append(new_signal)
+            self.display_modes[len(self.signals) - 1] = {'continuous': True, 'discrete': False}
+            # self.signals.append(new_signal2)
+            # self.display_modes[len(self.signals) - 1] = {'continuous': True, 'discrete': False}
+
+            # Update treeview
+            self.tree.insert('', 'end', iid=str(len(self.signals) - 1),
+                             values=(new_signal['name'], len(y), '☑', '☐'))
+            # self.tree.insert('', 'end', iid=str(len(self.signals) - 1),
+            #                  values=(new_signal2['name'], len(h), '☑', '☐'))
+
+            # Update plot
+            self.update_plot()
+
+            messagebox.showinfo("Success", f"Filtering Done!\nOutput Length = {len(y)}")
+
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+
+    def resample_signal_dialog(self):
+        """Show Resmapling dialog"""
+        from time_domain_operations import TimeDomainOperations
+
+        signal_info = self.get_selected_signal()
+        if not signal_info:
+            messagebox.showwarning("Warning", "Please select a signal")
+            return
+
+        idx, signal = signal_info
+
+        
 
     def show_help(self):
         """Show help information"""
